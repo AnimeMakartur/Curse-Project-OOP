@@ -1,0 +1,60 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'          # реліз збирається автоматично при пуші тега v1.0.0, v1.1.0, ...
+
+permissions:
+  contents: write    # дозвіл створювати Release
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # 1. Ставимо компілятор і збираємо C++ ядро твоїм же build.bat -> travelcore.dll
+      - name: Install MinGW
+        run: choco install mingw -y
+
+      - name: Build C++ core
+        run: |
+          refreshenv
+          .\Code\build.bat
+
+      # 2. Залежності GUI + PyInstaller
+      - name: Install Python deps
+        run: pip install pyinstaller PyQt6
+
+      # 3. Збираємо GUI у папку (onedir, без консолі)
+      - name: Package GUI with PyInstaller
+        run: |
+          pyinstaller --noconfirm --clean --onedir --windowed `
+            --name TravelSystem `
+            --distpath dist --workpath .pybuild --specpath .pybuild `
+            Code\View\app.py
+
+      # 4. Складаємо папку апки: View/ (exe) + Controllers/ (dll) + DataBase/ (json)
+      #    так, щоб відносні шляхи ../Controllers і ../DataBase з app.py знаходились
+      - name: Compose app folder + shortcut
+        run: |
+          mkdir dist\TravelSystemApp\View dist\TravelSystemApp\Controllers dist\TravelSystemApp\DataBase
+          move dist\TravelSystem dist\TravelSystemApp\View
+          copy Code\Controllers\travelcore.dll dist\TravelSystemApp\Controllers\
+          copy Code\DataBase\travel_db.json dist\TravelSystemApp\DataBase\
+          powershell -NoProfile -Command "$s=(New-Object -ComObject WScript.Shell).CreateShortcut('%CD%\dist\TravelSystemApp\TravelSystem.lnk'); $s.TargetPath='%CD%\dist\TravelSystemApp\View\TravelSystem.exe'; $s.WorkingDirectory='%CD%\dist\TravelSystemApp\View'; $s.Save()"
+
+      # 5. Архівуємо
+      - name: Zip
+        run: powershell -NoProfile -Command "Compress-Archive -Path dist\TravelSystemApp\* -DestinationPath dist\TravelSystemApp-win.zip -Force"
+
+      # 6. Публікуємо Release з цим zip автоматично
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/TravelSystemApp-win.zip
+          generate_release_notes: true
