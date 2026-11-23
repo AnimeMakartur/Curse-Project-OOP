@@ -17,6 +17,7 @@
 #Folder Ignore
 Diagrams/*
 Джерела/*
+JSON CS2/*.json
 
 _docx_full.txt
 # Build artifacts & Python cache

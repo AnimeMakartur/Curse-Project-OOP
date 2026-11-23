@@ -72,10 +72,50 @@ def run_console(db_path):
     return 0
 
 
+def _display_reachable():
+    """Груба перевірка доступності X-дисплея до старту Qt (щоб не падати з qpa-xcb)."""
+    if os.environ.get("WAYLAND_DISPLAY"):
+        return True
+    display = os.environ.get("DISPLAY", "")
+    if not display:
+        return False
+    if display.startswith("unix:"):
+        display = display[len("unix:"):]
+    host, sep, num = display.rpartition(":")
+    if not sep:
+        return False
+    try:
+        n = int(num.split(".")[0])
+    except ValueError:
+        return False
+    if host in ("", "unix"):
+        return os.path.exists(f"/tmp/.X11-unix/X{n}")
+    import socket
+    try:
+        with socket.create_connection((host, 6000 + n), timeout=1.5):
+            return True
+    except OSError:
+        return False
+
+
 def run_gui(db_path=None):
     from PyQt6.QtWidgets import QApplication
 
     from main_window import MainWindow
+
+    # Якщо дисплей не задано/недоступний — не падаємо з "could not connect to display",
+    # а переходимо в headless-режим offscreen із попередженням у лог.
+    # Перевіряємо навіть коли QT_QPA_PLATFORM=xcb задано примусово (Dockerfile/compose).
+    qpa = os.environ.get("QT_QPA_PLATFORM", "")
+    if qpa in ("", "xcb", "wayland", "wayland-egl") and not _display_reachable():
+        os.environ["QT_QPA_PLATFORM"] = "offscreen"
+        print(
+            "Увага: X-дисплей недоступний (DISPLAY=%r, WAYLAND_DISPLAY=%r) — GUI запущено "
+            "у headless-режимі QT_QPA_PLATFORM=offscreen. Для повноцінного GUI: Windows — "
+            "VcXsrv/Xming + .env DISPLAY=host.docker.internal:0; Linux — DISPLAY=:0 "
+            "(сокет /tmp/.X11-unix прокидається docker-compose)." % (
+                os.environ.get("DISPLAY", ""), os.environ.get("WAYLAND_DISPLAY", ""))
+        )
 
     app = QApplication(sys.argv)
     app.setApplicationName("TravelSystem")

@@ -107,9 +107,28 @@ docker compose up --build          # збірка образу + запуск GU
 
 - Linux: X11-дисплей хоста прокидається через `DISPLAY` і сокет `/tmp/.X11-unix`
   (для Wayland задайте `WAYLAND_DISPLAY` і `XDG_RUNTIME_DIR` у `.env`).
-- Windows (WSL2 + VcXsrv/Xming): створіть `.env` із рядком `DISPLAY=host.docker.internal:0`,
+- Windows (WSL2 + VcXsrv/Xming): скопіюйте `.env.example` у `.env`, задайте
+  `DISPLAY=host.docker.internal:0`, запустіть VcXsrv із **«Disable access control»**,
   потім `docker compose up --build`.
 - Headless/CI: `QT_QPA_PLATFORM=offscreen docker compose up --build`.
+- Консольний режим у контейнері: `docker compose --profile console run --build console`.
+
+### Часті проблеми Docker
+
+- `qt.qpa.xcb: could not connect to display` — контейнер не дістався до X-сервера
+  (у логу видно значення `DISPLAY`; порожнє означає, що `.env`/змінна не підхопились).
+  На Windows це нормально без `.env`: вкажіть `DISPLAY=host.docker.internal:0`
+  (VcXsrv має слухати TCP 6000 і бути запущеним із «Disable access control»).
+  На Linux перевірте `xhost` (дозвольте локальні підключення) — сокет уже прокинутий.
+  Якщо дисплей недоступний, `app.py` **автоматично** переходить у
+  `QT_QPA_PLATFORM=offscreen` із попередженням у логу (GUI тоді не видно, але застосунок
+  не падає) — перевірено юніт-перевіркою `_display_reachable()`.
+- `From 6.5.0, xcb-cursor0 or libxcb-cursor0 is needed...` — у Dockerfile встановлено
+  `libxcb-cursor0` (є self-check `ldconfig -p | grep libxcb-cursor`); якщо бачите це
+  разом із «could not connect to display» — спершу фіксніть дисплей, це вторинне
+  повідомление плагіна xcb.
+- `env: 'bash\r': No such file or directory` — CRLF у `build.sh`; уже виправлено
+  (LF + `.gitattributes` + виклик `bash build.sh` у Dockerfile).
 - Папка `Code/DataBase` змонтована як volume — зміни у `travel_db.json`
   підхоплюються без перезбірки контейнера.
 - Консольний режим у контейнері: `docker compose --profile console run --build console`.
