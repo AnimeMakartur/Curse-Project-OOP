@@ -42,6 +42,7 @@ jobs:
       # 4. Складаємо папку апки: View/ (exe) + Controllers/ (dll) + DataBase/ (json)
       #    так, щоб відносні шляхи ../Controllers і ../DataBase з app.py знаходились
       - name: Compose app folder + shortcut
+        shell: cmd
         run: |
           mkdir dist\TravelSystemApp\View dist\TravelSystemApp\Controllers dist\TravelSystemApp\DataBase
           move dist\TravelSystem dist\TravelSystemApp\View
