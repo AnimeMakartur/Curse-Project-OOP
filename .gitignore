@@ -1,0 +1,29 @@
+# Git ignore file for the project
+#Temp
+*.tmp
+*.log
+# Microsoft Ofice 
+*.docx
+*.xlsx
+*.pptx
+*.vsdx
+*.pdf
+#Images
+*.png
+*.jpg
+*.jpeg
+*.gif
+
+#Folder Ignore
+Diagrams/*
+Джерела/*
+
+_docx_full.txt
+# Build artifacts & Python cache
+Code/Controllers/*.dll
+Code/Controllers/*.lib
+Code/Controllers/*.exp
+Code/Controllers/*.so
+Code/Tests/*.exe
+__pycache__/
+*.pyc
