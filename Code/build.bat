@@ -2,51 +2,57 @@
 chcp 65001 >nul
 REM Збірка ядра C++ у shared-бібліотеку Controllers\travelcore.dll
 REM Порядок пошуку компілятора: g++ (MinGW/MSYS2) -> clang++ (LLVM) -> cl (MSVC Build Tools).
+REM Прапорець --tests додатково збирає Tests\.build\smoke_test.exe.
 cd /d "%~dp0"
+
+set "SOURCES=Models\City.cpp Models\Lane.cpp Models\PathStep.cpp Models\Tourist.cpp Models\TouristDestination.cpp Models\Attraction.cpp Models\Museum.cpp Models\Route.cpp Models\TravelPlan.cpp DataBase\DataLoader.cpp Controllers\Algorithms.cpp Controllers\TravelSystem.cpp Controllers\c_api.cpp"
 
 where g++ >nul 2>nul
 if %errorlevel%==0 (
-    g++ -std=c++17 -O2 -shared -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -I Models -I DataBase -I Controllers ^
-        Models\Tourist.cpp Models\TouristDestination.cpp Models\Attraction.cpp ^
-        Models\Museum.cpp Models\Route.cpp Models\TravelPlan.cpp ^
-        DataBase\DataLoader.cpp ^
-        Controllers\Algorithms.cpp Controllers\TravelSystem.cpp Controllers\c_api.cpp ^
+    g++ -std=c++17 -O2 -Wall -Wextra -shared -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -I Models -I DataBase -I Controllers ^
+        %SOURCES% ^
         -o Controllers\travelcore.dll
-    goto :done
+    goto :tests
 )
 
 where clang++ >nul 2>nul
 if %errorlevel%==0 (
-    clang++ -std=c++17 -O2 -shared -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -I Models -I DataBase -I Controllers ^
-        Models\Tourist.cpp Models\TouristDestination.cpp Models\Attraction.cpp ^
-        Models\Museum.cpp Models\Route.cpp Models\TravelPlan.cpp ^
-        DataBase\DataLoader.cpp ^
-        Controllers\Algorithms.cpp Controllers\TravelSystem.cpp Controllers\c_api.cpp ^
+    clang++ -std=c++17 -O2 -Wall -Wextra -shared -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -I Models -I DataBase -I Controllers ^
+        %SOURCES% ^
         -o Controllers\travelcore.dll
-    goto :done
+    goto :tests
 )
 
 REM Fallback: MSVC (Visual Studio Build Tools) через vcvarsall + cl /LD
 for %%V in ("C:\Program Files\Microsoft Visual Studio\2022\BuildTools" "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools" "C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools") do (
     if exist "%%~V\vc\Auxiliary\Build\vcvarsall.bat" (
         call "%%~V\vc\Auxiliary\Build\vcvarsall.bat" x64 >nul
-        cl /nologo /std:c++17 /O2 /EHsc /LD /D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH /I Models /I DataBase /I Controllers ^
-            Models\Tourist.cpp Models\TouristDestination.cpp Models\Attraction.cpp ^
-            Models\Museum.cpp Models\Route.cpp Models\TravelPlan.cpp ^
-            DataBase\DataLoader.cpp ^
-            Controllers\Algorithms.cpp Controllers\TravelSystem.cpp Controllers\c_api.cpp ^
+        cl /nologo /std:c++17 /O2 /W4 /EHsc /LD /D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH /I Models /I DataBase /I Controllers ^
+            %SOURCES% ^
             /Fe:Controllers\travelcore.dll
-        goto :done
+        goto :tests
     )
 )
 
 echo Помилка: не знайдено компілятор (g++, clang++ або MSVC Build Tools).
 exit /b 1
 
-:done
-if %errorlevel%==0 (
-    echo Готово: Controllers\travelcore.dll
-) else (
-    echo Помилка збірки.
+:tests
+if %errorlevel% neq 0 (
+    echo Помилка збірки бібліотеки.
     exit /b 1
 )
+echo Готово: Controllers\travelcore.dll
+
+if /i "%~1"=="--tests" (
+    if not exist Tests\.build mkdir Tests\.build
+    where g++ >nul 2>nul && (
+        g++ -std=c++17 -O2 -Wall -Wextra -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -I Models -I DataBase -I Controllers ^
+            Tests\smoke_test.cpp %SOURCES% -o Tests\.build\smoke_test.exe
+    ) || (
+        clang++ -std=c++17 -O2 -Wall -Wextra -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -I Models -I DataBase -I Controllers ^
+            Tests\smoke_test.cpp %SOURCES% -o Tests\.build\smoke_test.exe
+    )
+    if %errorlevel%==0 echo Готово: Tests\.build\smoke_test.exe
+)
+exit /b 0

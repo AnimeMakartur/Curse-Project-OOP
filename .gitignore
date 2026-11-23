@@ -25,5 +25,6 @@ Code/Controllers/*.lib
 Code/Controllers/*.exp
 Code/Controllers/*.so
 Code/Tests/*.exe
+Code/Tests/.build/
 __pycache__/
 *.pyc

@@ -12,7 +12,7 @@ private:
     std::string expositionTheme;
 
 public:
-    Museum(int id, const std::string& name, double cost, double rating,
+    Museum(int id, int cityId, const std::string& name, double cost, double rating,
            double visitDuration, double openHour, double closeHour,
            const std::vector<std::string>& tags,
            int exhibitsCount, bool hasAudioGuide, const std::string& expositionTheme);

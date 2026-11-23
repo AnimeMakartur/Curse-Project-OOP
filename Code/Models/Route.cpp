@@ -1,65 +1,30 @@
 #include "Route.h"
 
+#include <algorithm>
+#include <limits>
+
 namespace travel {
 
-std::string laneTypeToString(LaneType type) {
-    switch (type) {
-        case LaneType::Sidewalk: return "sidewalk";
-        case LaneType::BikeLane: return "bike_lane";
-        case LaneType::CarLane:  return "car_lane";
-        case LaneType::BusLane:  return "bus_lane";
-        case LaneType::TramLine: return "tram_line";
-        case LaneType::Railway:  return "railway";
-    }
-    return "sidewalk";
-}
+Route::Route() : cityId(0), fromId(0), toId(0), distanceKm(0.0) {}
 
-std::string laneTypeToUkr(LaneType type) {
-    switch (type) {
-        case LaneType::Sidewalk: return "тротуар";
-        case LaneType::BikeLane: return "велосипедна доріжка";
-        case LaneType::CarLane:  return "автомобільна смуга";
-        case LaneType::BusLane:  return "автобусна смуга";
-        case LaneType::TramLine: return "відокремлена лінія трамвая";
-        case LaneType::Railway:  return "залізнична колія";
-    }
-    return "тротуар";
-}
+Route::Route(int cityId, int fromId, int toId, double distanceKm,
+             const std::vector<Lane>& lanes)
+    : cityId(cityId), fromId(fromId), toId(toId),
+      distanceKm(distanceKm), lanes(lanes) {}
 
-bool laneTypeFromString(const std::string& text, LaneType& out) {
-    if (text == "sidewalk" || text == "тротуар") { out = LaneType::Sidewalk; return true; }
-    if (text == "bike_lane" || text == "велосипедна доріжка" || text == "велодоріжка") { out = LaneType::BikeLane; return true; }
-    if (text == "car_lane" || text == "автомобільна смуга" || text == "автомобільна дорога") { out = LaneType::CarLane; return true; }
-    if (text == "bus_lane" || text == "автобусна смуга") { out = LaneType::BusLane; return true; }
-    if (text == "tram_line" || text == "відокремлена лінія трамвая" || text == "трамвайна лінія") { out = LaneType::TramLine; return true; }
-    if (text == "railway" || text == "залізнична колія" || text == "залізниця") { out = LaneType::Railway; return true; }
-    return false;
-}
-
-Route::Route()
-    : fromId(0), toId(0), distanceKm(0.0), travelTimeHours(0.0),
-      transportCost(0.0), dailyTimeLimit(0.0) {}
-
-Route::Route(int fromId, int toId, double distanceKm, double travelTimeHours,
-             double transportCost, double dailyTimeLimit,
-             const std::vector<LaneType>& lanes)
-    : fromId(fromId), toId(toId), distanceKm(distanceKm),
-      travelTimeHours(travelTimeHours), transportCost(transportCost),
-      dailyTimeLimit(dailyTimeLimit), lanes(lanes) {}
-
+int Route::getCityId() const { return cityId; }
 int Route::getFromId() const { return fromId; }
 int Route::getToId() const { return toId; }
 double Route::getDistance() const { return distanceKm; }
-double Route::getTravelTime() const { return travelTimeHours; }
-double Route::getTransportCost() const { return transportCost; }
-double Route::getDailyTimeLimit() const { return dailyTimeLimit; }
 
-const std::vector<LaneType>& Route::getLanes() const { return lanes; }
+const std::vector<Lane>& Route::getLanes() const { return lanes; }
+
+void Route::setLanes(const std::vector<Lane>& newLanes) { lanes = newLanes; }
 
 std::vector<std::string> Route::getLaneNames() const {
     std::vector<std::string> names;
     names.reserve(lanes.size());
-    for (LaneType lane : lanes) names.push_back(laneTypeToUkr(lane));
+    for (const Lane& lane : lanes) names.push_back(laneTypeToUkr(lane.type));
     return names;
 }
 
@@ -67,12 +32,50 @@ std::string Route::getRoadDescription() const {
     std::string result;
     for (size_t i = 0; i < lanes.size(); ++i) {
         if (i > 0) result += ", ";
-        result += laneTypeToUkr(lanes[i]);
+        result += lanes[i].describe();
     }
-    if (result.empty()) result = "пішохідний перехід";
+    if (result.empty()) result = Lane(LaneType::Sidewalk).describe();
     return result;
 }
 
-void Route::setLanes(const std::vector<LaneType>& newLanes) { lanes = newLanes; }
+bool Route::hasAffordableLane(double remainingBudget) const {
+    if (lanes.empty()) return true; // порожній набір = тротуар (безкоштовно)
+    for (const Lane& lane : lanes) {
+        if (lane.isAffordable(remainingBudget)) return true;
+    }
+    return false;
+}
+
+Lane Route::chooseBestLane(double remainingBudget) const {
+    if (lanes.empty()) return Lane(LaneType::Sidewalk);
+
+    const Lane* best = nullptr;
+    const Lane* cheapest = nullptr;
+    for (const Lane& lane : lanes) {
+        if (!cheapest || lane.cost < cheapest->cost) cheapest = &lane;
+        if (!lane.isAffordable(remainingBudget)) continue;
+        if (!best || lane.travelTimeHours(distanceKm) < best->travelTimeHours(distanceKm)) {
+            best = &lane;
+        }
+    }
+    // Якщо жодна смуга не вписується в бюджет — найдешевша (зазвичай пішки, 0 грн).
+    return best ? *best : (cheapest ? *cheapest : Lane(LaneType::Sidewalk));
+}
+
+double Route::optimalTravelTimeHours(double remainingBudget) const {
+    return chooseBestLane(remainingBudget).travelTimeHours(distanceKm);
+}
+
+double Route::optimalCost(double remainingBudget) const {
+    return chooseBestLane(remainingBudget).cost;
+}
+
+double Route::getTravelTime() const {
+    return optimalTravelTimeHours(std::numeric_limits<double>::infinity());
+}
+
+double Route::getTransportCost() const {
+    return optimalCost(std::numeric_limits<double>::infinity());
+}
 
 } // namespace travel

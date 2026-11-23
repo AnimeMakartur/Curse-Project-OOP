@@ -52,22 +52,36 @@ class TravelClient:
         lib.ts_destroy.argtypes = [c_void_p]
         lib.ts_load_data.restype = c_int
         lib.ts_load_data.argtypes = [c_void_p, c_char_p]
+        lib.ts_last_error.restype = c_char_p
+        lib.ts_last_error.argtypes = []
+        lib.ts_cities_count.restype = c_int
+        lib.ts_cities_count.argtypes = [c_void_p]
+        lib.ts_get_cities.restype = c_void_p
+        lib.ts_get_cities.argtypes = [c_void_p]
         lib.ts_set_tourist.restype = None
         lib.ts_set_tourist.argtypes = [
-            c_void_p, c_int, c_char_p, c_double, c_int, c_int, c_double, c_char_p,
+            c_void_p, c_int, c_char_p, c_double, c_int, c_int, c_double, c_char_p, c_int,
         ]
+        lib.ts_set_target_city.restype = None
+        lib.ts_set_target_city.argtypes = [c_void_p, c_int]
         lib.ts_get_profile.restype = c_void_p
         lib.ts_get_profile.argtypes = [c_void_p]
         lib.ts_catalog_size.restype = c_int
         lib.ts_catalog_size.argtypes = [c_void_p]
         lib.ts_routes_count.restype = c_int
         lib.ts_routes_count.argtypes = [c_void_p]
+        lib.ts_catalog.restype = c_void_p
+        lib.ts_catalog.argtypes = [c_void_p, c_int]
+        lib.ts_get_routes.restype = c_void_p
+        lib.ts_get_routes.argtypes = [c_void_p, c_int]
         lib.ts_filter_destinations.restype = c_void_p
         lib.ts_filter_destinations.argtypes = [c_void_p]
         lib.ts_sorted_destinations.restype = c_void_p
         lib.ts_sorted_destinations.argtypes = [c_void_p]
         lib.ts_find_shortest_path.restype = c_void_p
         lib.ts_find_shortest_path.argtypes = [c_void_p, c_int, c_int]
+        lib.ts_find_shortest_path_budget.restype = c_void_p
+        lib.ts_find_shortest_path_budget.argtypes = [c_void_p, c_int, c_int, c_double]
         lib.ts_generate_plan.restype = c_void_p
         lib.ts_generate_plan.argtypes = [c_void_p]
         lib.ts_free_string.restype = None
@@ -86,11 +100,25 @@ class TravelClient:
 
     # --- публічні методи (відповідають use case діаграмі) ---
     def load_data(self, filename):
-        """Завантажити базу даних (каталог + граф маршрутів) з JSON-файлу."""
-        return self._lib.ts_load_data(self._handle, filename.encode("utf-8")) == 1
+        """Завантажити базу даних (міста + каталог + графи маршрутів) з JSON-файлу."""
+        ok = self._lib.ts_load_data(self._handle, filename.encode("utf-8")) == 1
+        if not ok:
+            err = self._lib.ts_last_error()
+            raise RuntimeError(
+                "Не вдалося завантажити БД: %s (%s)" % (filename, err.decode("utf-8") if err else "?")
+            )
+        return True
 
-    def set_tourist(self, name, budget, is_total_budget, days, daily_time_limit, interests):
-        """Створити/редагувати профіль туриста (UC1, UC4, UC5)."""
+    def get_cities(self):
+        """Список міст/агломерацій із завантаженої бази: [{id, name, region, description}]."""
+        return self._take_json(self._lib.ts_get_cities(self._handle)) or []
+
+    def cities_count(self):
+        return self._lib.ts_cities_count(self._handle)
+
+    def set_tourist(self, name, budget, is_total_budget, days, daily_time_limit, interests,
+                    city_id=-1):
+        """Створити/редагувати профіль туриста (UC1, UC4, UC5) із обраним містом city_id."""
         interests_csv = ",".join(interests)
         self._lib.ts_set_tourist(
             self._handle,
@@ -101,7 +129,12 @@ class TravelClient:
             int(days),
             float(daily_time_limit),
             interests_csv.encode("utf-8"),
+            int(city_id),
         )
+
+    def set_target_city(self, city_id):
+        """Змінити обране місто/агломерацію у поточному профілі туриста."""
+        self._lib.ts_set_target_city(self._handle, int(city_id))
 
     def get_profile(self):
         return self._take_json(self._lib.ts_get_profile(self._handle))
@@ -112,17 +145,33 @@ class TravelClient:
     def routes_count(self):
         return self._lib.ts_routes_count(self._handle)
 
+    def get_catalog(self, city_id=-1):
+        """Повний каталог об'єктів міста (city_id=-1 — усі міста) для GUI-таблиці."""
+        return self._take_json(self._lib.ts_catalog(self._handle, int(city_id))) or []
+
+    def get_routes(self, city_id=-1):
+        """Ребра транспортного графа міста зі списком смуг/ліній."""
+        return self._take_json(self._lib.ts_get_routes(self._handle, int(city_id))) or []
+
     def filter_destinations(self):
-        """Лінійний пошук/фільтрація каталогу (UC6)."""
-        return self._take_json(self._lib.ts_filter_destinations(self._handle))
+        """Лінійний пошук/фільтрація каталогу обраного міста (UC6)."""
+        return self._take_json(self._lib.ts_filter_destinations(self._handle)) or []
 
     def sorted_destinations(self):
         """Фільтрація + оцінка релевантності + сортування (UC6, UC7, UC9)."""
-        return self._take_json(self._lib.ts_sorted_destinations(self._handle))
+        return self._take_json(self._lib.ts_sorted_destinations(self._handle)) or []
 
-    def find_shortest_path(self, from_id, to_id):
-        """Оптимальний маршрут алгоритмом Дейкстри (UC8)."""
-        return self._take_json(self._lib.ts_find_shortest_path(self._handle, int(from_id), int(to_id)))
+    def find_shortest_path(self, from_id, to_id, budget=None):
+        """Оптимальний маршрут алгоритмом Дейкстри (UC8) з деталізацією ліній транспорту."""
+        if budget is None:
+            return self._take_json(
+                self._lib.ts_find_shortest_path(self._handle, int(from_id), int(to_id))
+            ) or []
+        return self._take_json(
+            self._lib.ts_find_shortest_path_budget(
+                self._handle, int(from_id), int(to_id), float(budget)
+            )
+        ) or []
 
     def generate_plan(self):
         """Згенерувати персоналізований туристичний план (UC2)."""

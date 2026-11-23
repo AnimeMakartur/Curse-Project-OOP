@@ -1,19 +1,37 @@
 // Консольний smoke-тест ядра C++ (без GUI): перевіряє повний цикл
-// завантаження БД -> профіль -> фільтр -> сортування -> Дейкстра -> план.
+// завантаження БД (міста) -> профіль із targetCityId -> фільтр -> сортування
+// -> Дейкстра з вибором лінії транспорту -> план із деталізацією переходів.
 //
 // Збірка (після Code/build.bat або вручну), наприклад:
-//   g++ -std=c++17 -I ../Models -I ../DataBase -I ../Controllers smoke_test.cpp \
+//   clang++ -std=c++17 -Wall -Wextra -I ../Models -I ../DataBase -I ../Controllers smoke_test.cpp \
 //       ../Models/*.cpp ../DataBase/DataLoader.cpp ../Controllers/Algorithms.cpp ../Controllers/TravelSystem.cpp \
 //       -o smoke_test
 // Запуск:
 //   ./smoke_test ../DataBase/travel_db.json
+//   ./smoke_test sample_db.json        (демо-база з двома містами)
 
 #include <iostream>
 #include <string>
+#include <vector>
 
 #include "../Controllers/TravelSystem.h"
 
 using namespace travel;
+
+static void printPath(const std::vector<PathStep>& path) {
+    if (path.empty()) {
+        std::cout << "немає шляху\n";
+        return;
+    }
+    for (const PathStep& step : path) {
+        std::cout << "  " << step.route.getFromId() << " -> " << step.route.getToId()
+                  << " | " << step.route.getDistance() << " км"
+                  << " | " << step.timeHours << " год"
+                  << " | " << step.cost << " грн"
+                  << " | " << step.lane.describe()
+                  << " (еф. швидкість " << step.lane.effectiveSpeedKmh() << " км/год)\n";
+    }
+}
 
 int main(int argc, char** argv) {
     std::string dbFile = (argc > 1) ? argv[1] : "../DataBase/travel_db.json";
@@ -24,34 +42,56 @@ int main(int argc, char** argv) {
         std::cerr << "Помилка завантаження БД: " << error << "\n";
         return 1;
     }
-    std::cout << "Завантажено об'єктів: " << system.getCatalogSize()
-              << ", ребер графа: " << system.getRoutesCount() << "\n";
+    std::cout << "Завантажено міст: " << system.getCitiesCount()
+              << ", об'єктів: " << system.getCatalogSize()
+              << ", ребер графів: " << system.getRoutesCount() << "\n";
+    for (const City& c : system.getCities()) {
+        std::cout << "  місто #" << c.getId() << ": " << c.getName()
+                  << " (" << c.getRegion() << ") — " << c.getDescription() << "\n";
+    }
+    if (system.getCities().empty()) {
+        std::cout << "База порожня — завершення без профілю.\n";
+        return 0;
+    }
 
+    int cityId = system.getCities().front().getId();
     Tourist tourist(1, "Єгор", 1000.0, true, 2, 8.0,
-                    {"історія", "архітектура", "природа"});
+                    {"історія", "архітектура", "природа"}, cityId);
     system.setTouristProfile(tourist);
-    std::cout << "Денний бюджет: " << system.getTourist().getDailyBudget()
+    std::cout << "\nПрофіль: " << system.getTourist().getName()
+              << ", місто id=" << system.getTourist().getTargetCityId()
+              << ", денний бюджет: " << system.getTourist().getDailyBudget()
               << ", загальний: " << system.getTourist().getTotalBudget() << "\n";
 
     auto filtered = system.filterDestinations();
-    std::cout << "\nВідфільтровано об'єктів: " << filtered.size() << "\n";
+    std::cout << "\nВідфільтровано об'єктів міста #" << cityId << ": " << filtered.size() << "\n";
     system.sortDestinations(filtered);
     for (const TouristDestination* d : filtered) {
-        std::cout << "  [" << d->getRelevance() << "] " << d->getDetails() << "\n";
+        std::cout << "  [" << d->getRelevance() << "] id=" << d->getId()
+                  << " cityId=" << d->getCityId() << " " << d->getDetails() << "\n";
     }
 
-    if (!filtered.empty()) {
-        auto path = system.findShortestPath(filtered.front()->getId(), filtered.back()->getId());
-        std::cout << "\nНайкоротший шлях " << filtered.front()->getId()
-                  << " -> " << filtered.back()->getId() << ": ";
-        if (path.empty()) {
-            std::cout << "немає шляху\n";
-        } else {
-            for (const Route& r : path) {
-                std::cout << r.getFromId() << "->" << r.getToId()
-                          << " (" << r.getRoadDescription() << ") ";
+    if (filtered.size() >= 2) {
+        int a = filtered.front()->getId();
+        int b = filtered.back()->getId();
+        std::cout << "\nНайкоротший шлях " << a << " -> " << b
+                  << " (Дейкстра, бюджет " << tourist.getDailyBudget() << " грн/день):\n";
+        printPath(system.findShortestPath(a, b));
+
+        // Перевірка ізоляції міст: вершини різних міст не з'єднуються
+        int otherCityId = -1;
+        for (const City& c : system.getCities()) {
+            if (c.getId() != cityId) { otherCityId = c.getId(); break; }
+        }
+        if (otherCityId != -1) {
+            for (const TouristDestination* d : system.getCatalog(otherCityId)) {
+                auto cross = system.findShortestPath(a, d->getId(), cityId, 1e9);
+                std::cout << "  контроль: шлях " << a << " (місто " << cityId
+                          << ") -> " << d->getId() << " (місто " << otherCityId
+                          << ") у межах міста " << cityId << ": "
+                          << (cross.empty() ? "немає шляху (OK)" : "Є ШЛЯХ (ПОМИЛКА!)") << "\n";
+                break;
             }
-            std::cout << "\n";
         }
     }
 

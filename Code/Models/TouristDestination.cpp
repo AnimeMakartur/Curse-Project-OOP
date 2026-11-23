@@ -1,4 +1,5 @@
 #include "TouristDestination.h"
+
 #include "Tourist.h"
 
 #include <algorithm>
@@ -7,11 +8,11 @@ namespace travel {
 
 static const double RATING_MAX = 5.0; // максимальний бал рейтингу в системі
 
-TouristDestination::TouristDestination(int id, const std::string& name, double cost,
+TouristDestination::TouristDestination(int id, int cityId, const std::string& name, double cost,
                                        double rating, double visitDuration,
                                        double openHour, double closeHour,
                                        const std::vector<std::string>& tags)
-    : id(id), name(name), cost(cost), rating(rating), visitDuration(visitDuration),
+    : id(id), cityId(cityId), name(name), cost(cost), rating(rating), visitDuration(visitDuration),
       openHour(openHour), closeHour(closeHour), tags(tags), relevanceScore(0.0) {}
 
 double TouristDestination::baseRelevance(const Tourist& t, double w1, double w2, double w3) const {
@@ -36,6 +37,7 @@ double TouristDestination::baseRelevance(const Tourist& t, double w1, double w2,
 }
 
 int TouristDestination::getId() const { return id; }
+int TouristDestination::getCityId() const { return cityId; }
 std::string TouristDestination::getName() const { return name; }
 double TouristDestination::getCost() const { return cost; }
 double TouristDestination::getRating() const { return rating; }

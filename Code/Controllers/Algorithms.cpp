@@ -1,7 +1,6 @@
 #include "Algorithms.h"
 
 #include <algorithm>
-#include <functional>
 #include <limits>
 #include <map>
 #include <queue>
@@ -52,8 +51,9 @@ void sortByRelevance(std::vector<TouristDestination*>& list) {
               });
 }
 
-std::vector<Route> dijkstra(const std::vector<Route>& routes, int startId, int endId) {
-    std::vector<Route> emptyPath;
+std::vector<PathStep> dijkstra(const std::vector<Route>& routes, int startId, int endId,
+                               double remainingBudget) {
+    std::vector<PathStep> emptyPath;
     if (startId == endId) return emptyPath;
 
     // Список суміжності: вершина -> (сусід, індекс ребра)
@@ -66,7 +66,7 @@ std::vector<Route> dijkstra(const std::vector<Route>& routes, int startId, int e
     const double INF = std::numeric_limits<double>::infinity();
     std::map<int, double> dist;
     std::map<int, int> prevVertex;
-    std::map<int, size_t> prevEdge;
+    std::map<int, PathStep> prevStep;
     for (const auto& entry : adjacency) dist[entry.first] = INF;
     dist[startId] = 0.0;
 
@@ -84,12 +84,17 @@ std::vector<Route> dijkstra(const std::vector<Route>& routes, int startId, int e
         auto it = adjacency.find(u);
         if (it == adjacency.end()) continue;
         for (const auto& [v, edgeIndex] : it->second) {
-            double w = routes[edgeIndex].getTravelTime(); // вага ребра — час
+            const Route& route = routes[edgeIndex];
+            // Пропускаємо ребро, якщо жодна його смуга/лінія не вписується в бюджет
+            if (!route.hasAffordableLane(remainingBudget)) continue;
+            // Автоматичний вибір оптимальної лінії/смуги з мінімальним часом переходу
+            PathStep step(route, route.chooseBestLane(remainingBudget));
+            double w = step.timeHours; // вага ребра — мінімальний час переміщення
             // Релаксація: d[v] = min(d[v], d[u] + w(u, v))
             if (dist[u] + w < dist[v]) {
                 dist[v] = dist[u] + w;
                 prevVertex[v] = u;
-                prevEdge[v] = edgeIndex;
+                prevStep[v] = step;
                 queue.push({dist[v], v});
             }
         }
@@ -99,16 +104,19 @@ std::vector<Route> dijkstra(const std::vector<Route>& routes, int startId, int e
         return emptyPath; // шляху не існує
     }
 
-    // Відновлення шляху від кінця до початку
-    std::vector<Route> path;
+    // Відновлення шляху від кінця до початку (деталізовані кроки з лініями транспорту)
+    std::vector<PathStep> path;
     int current = endId;
     while (current != startId) {
-        size_t edgeIndex = prevEdge[current];
-        path.push_back(routes[edgeIndex]);
+        path.push_back(prevStep[current]);
         current = prevVertex[current];
     }
     std::reverse(path.begin(), path.end());
     return path;
+}
+
+std::vector<PathStep> dijkstra(const std::vector<Route>& routes, int startId, int endId) {
+    return dijkstra(routes, startId, endId, std::numeric_limits<double>::infinity());
 }
 
 } // namespace algorithms

@@ -2,11 +2,11 @@
 
 namespace travel {
 
-Museum::Museum(int id, const std::string& name, double cost, double rating,
+Museum::Museum(int id, int cityId, const std::string& name, double cost, double rating,
                double visitDuration, double openHour, double closeHour,
                const std::vector<std::string>& tags,
                int exhibitsCount, bool hasAudioGuide, const std::string& expositionTheme)
-    : TouristDestination(id, name, cost, rating, visitDuration, openHour, closeHour, tags),
+    : TouristDestination(id, cityId, name, cost, rating, visitDuration, openHour, closeHour, tags),
       exhibitsCount(exhibitsCount), hasAudioGuide(hasAudioGuide),
       expositionTheme(expositionTheme) {}
 

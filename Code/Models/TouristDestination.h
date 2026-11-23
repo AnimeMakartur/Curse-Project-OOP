@@ -8,9 +8,11 @@ namespace travel {
 class Tourist;
 
 // Базовий абстрактний клас точки інтересу (туристичного об'єкта).
+// Об'єкт належить до конкретного міста/агломерації (cityId).
 class TouristDestination {
 protected:
     int id;
+    int cityId;             // місто/агломерація, якій належить об'єкт
     std::string name;
     double cost;            // вартість вхідного квитка
     double rating;          // рейтинг (0..5)
@@ -25,12 +27,13 @@ protected:
     double baseRelevance(const Tourist& t, double w1, double w2, double w3) const;
 
 public:
-    TouristDestination(int id, const std::string& name, double cost, double rating,
+    TouristDestination(int id, int cityId, const std::string& name, double cost, double rating,
                        double visitDuration, double openHour, double closeHour,
                        const std::vector<std::string>& tags);
     virtual ~TouristDestination() = default;
 
     int getId() const;
+    int getCityId() const;
     std::string getName() const;
     double getCost() const;
     double getRating() const;

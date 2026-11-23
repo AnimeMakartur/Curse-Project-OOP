@@ -12,7 +12,7 @@ private:
     bool isSeasonal;
 
 public:
-    Attraction(int id, const std::string& name, double cost, double rating,
+    Attraction(int id, int cityId, const std::string& name, double cost, double rating,
                double visitDuration, double openHour, double closeHour,
                const std::vector<std::string>& tags,
                bool isOutdoor, const std::string& architecturalStyle, bool isSeasonal);

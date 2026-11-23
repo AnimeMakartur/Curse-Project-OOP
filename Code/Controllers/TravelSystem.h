@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 
+#include "../Models/City.h"
+#include "../Models/PathStep.h"
 #include "../Models/Route.h"
 #include "../Models/Tourist.h"
 #include "../Models/TouristDestination.h"
@@ -10,13 +12,15 @@
 
 namespace travel {
 
-// Фасадне керуюче ядро інформаційно-аналітичної системи (bizнес-логіка, C++).
-// Координує: завантаження даних, фільтрацію каталогу (лінійний пошук),
-// ранжування (сортування), побудову маршруту (Дейкстра) та генерацію плану.
+// Фасадне керуюче ядро інформаційно-аналітичної системи (бізнес-логіка, C++).
+// Координує: завантаження даних (міста + каталог + граф), фільтрацію каталогу
+// обраного міста (лінійний пошук), ранжування (сортування), побудову маршруту
+// (Дейкстра з вибором лінії транспорту) та генерацію персоналізованого плану.
 class TravelSystem {
 private:
-    std::vector<TouristDestination*> catalog; // каталог об'єктів (володіє пам'яттю)
-    std::vector<Route> routes;                // ребра графа (зберігає граф)
+    std::vector<City> cities;                 // міста / агломерації з БД
+    std::vector<TouristDestination*> catalog; // каталог об'єктів усіх міст (володіє пам'яттю)
+    std::vector<Route> routes;                // ребра графів усіх міст
     TravelPlan* currentPlan;                  // обраний план
     Tourist currentTourist;                   // обраний профіль туриста
     bool hasTourist;
@@ -28,6 +32,10 @@ private:
 
     static constexpr double DAY_START_HOUR = 9.0; // початок туристичного дня
 
+    // Допоміжні вибірки в межах міста (cityId < 0 — усі міста)
+    std::vector<TouristDestination*> catalogForCity(int cityId) const;
+    std::vector<Route> routesForCity(int cityId) const;
+
 public:
     TravelSystem();
     ~TravelSystem();
@@ -35,28 +43,42 @@ public:
     TravelSystem(const TravelSystem&) = delete;
     TravelSystem& operator=(const TravelSystem&) = delete;
 
-    // Завантажує каталог та граф маршрутів з JSON-файлу бази даних
+    // Завантажує міста, каталог та графи маршрутів з JSON-файлу бази даних
     bool loadData(const std::string& filename, std::string& error);
+
+    const std::vector<City>& getCities() const;
 
     void setTouristProfile(const Tourist& t);
     const Tourist& getTourist() const;
     bool hasProfile() const;
+    int activeCityId() const; // targetCityId туриста (або -1)
 
-    // Лінійний пошук: фільтрація каталогу за профілем туриста
+    // Лінійний пошук: фільтрація каталогу ОБРАНОГО МІСТА за профілем туриста
     std::vector<TouristDestination*> filterDestinations();
 
-    // Сортування списку об'єктів (власна реалізація поверх std::sort)
+    // Повний каталог об'єктів міста (cityId < 0 — усі міста) — для GUI-таблиці
+    std::vector<TouristDestination*> getCatalog(int cityId) const;
+
+    // Усі ребра транспортного графа міста (cityId < 0 — усі міста)
+    std::vector<Route> getRoutes(int cityId) const;
+
+    // Сортування списку об'єктів за релевантністю (std::sort поверх оцінок)
     void sortDestinations(std::vector<TouristDestination*>& list);
 
-    // Персоналізований підбір плану: фільтрація -> релевантність -> сортування -> жадібний розподіл по днях з Дейкстрою
+    // Персоналізований підбір плану в межах обраного міста:
+    // фільтрація -> релевантність -> сортування -> жадібний розподіл по днях з Дейкстрою
     TravelPlan generatePersonalizedPlan();
 
-    // Оптимальний маршрут (Дейкстра) між двома вершинами графа
-    std::vector<Route> findShortestPath(int startId, int endId);
+    // Оптимальний маршрут (Дейкстра) між двома вершинами графа ОБРАНОГО міста
+    // з урахуванням денного бюджету туриста
+    std::vector<PathStep> findShortestPath(int startId, int endId);
+    // Явна версія: задане місто та залишок бюджету
+    std::vector<PathStep> findShortestPath(int startId, int endId, int cityId, double remainingBudget);
 
     const TravelPlan* getCurrentPlan() const;
     size_t getCatalogSize() const;
     size_t getRoutesCount() const;
+    size_t getCitiesCount() const;
 };
 
 } // namespace travel

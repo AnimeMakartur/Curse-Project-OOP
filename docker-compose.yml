@@ -1,0 +1,36 @@
+# Запуск однією командою:  docker compose up --build
+# Консольний режим (без GUI):  docker compose --profile console run --build console
+name: travelsystem  # фіксована назва проєкту (ім'я папки з кирилицею не підходить)
+
+services:
+  travelsystem:
+    build: .
+    image: travelsystem:latest
+    container_name: travelsystem
+    environment:
+      # X11: прокидання дисплея хоста (Linux: DISPLAY=:0, сокет /tmp/.X11-unix).
+      # Windows + VcXsrv/Xming: покладіть у .env рядок DISPLAY=host.docker.internal:0
+      DISPLAY: ${DISPLAY:-:0}
+      QT_QPA_PLATFORM: ${QT_QPA_PLATFORM:-xcb}
+      # Wayland: задайте WAYLAND_DISPLAY та XDG_RUNTIME_DIR ( сокет монтується нижче)
+      WAYLAND_DISPLAY: ${WAYLAND_DISPLAY:-}
+      XDG_RUNTIME_DIR: ${XDG_RUNTIME_DIR:-/tmp}
+      TRAVELCORE_LIB: /app/Code/Controllers/libtravelcore.so
+      PYTHONUTF8: "1"
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ${XDG_RUNTIME_DIR:-/tmp}:${XDG_RUNTIME_DIR:-/tmp}:rw
+      # JSON-база як volume: зміни в travel_db.json видно в контейнері одразу
+      - ./Code/DataBase:/app/Code/DataBase:rw
+    command: ["python", "Code/View/app.py", "/app/Code/DataBase/travel_db.json"]
+    # Для headless-середовища: QT_QPA_PLATFORM=offscreen docker compose up --build
+
+  console:
+    build: .
+    profiles: ["console"]
+    environment:
+      TRAVELCORE_LIB: /app/Code/Controllers/libtravelcore.so
+      PYTHONUTF8: "1"
+    volumes:
+      - ./Code/DataBase:/app/Code/DataBase:rw
+    command: ["python", "Code/View/app.py", "--console", "/app/Code/DataBase/travel_db.json"]

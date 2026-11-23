@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "../Models/PathStep.h"
 #include "../Models/Route.h"
 #include "../Models/Tourist.h"
 #include "../Models/TouristDestination.h"
@@ -24,10 +25,18 @@ std::vector<TouristDestination*> linearFilter(
 // за спаданням інтегральної оцінки релевантності.
 void sortByRelevance(std::vector<TouristDestination*>& list);
 
-// Алгоритм Дейкстри (черга з пріоритетом): найкоротший шлях від startId до endId.
-// Вага ребра — час переміщення (travelTimeHours).
-// Повертає послідовність ребер Route або порожній вектор, якщо шляху немає.
-std::vector<Route> dijkstra(const std::vector<Route>& routes, int startId, int endId);
+// Алгоритм Дейкстри (черга з пріоритетом) по ребрах одного міста.
+// Вага ребра (u,v) — мінімальний час переміщення серед смуг/ліній, що вписуються
+// у залишок бюджету туриста:
+//   t(u,v) = min_{l ∈ lanes, cost(l) ≤ remainingBudget}
+//            ( distanceKm / (v_base·k_speed(l)) + t_wait(l) )
+// Повертає деталізовані кроки маршруту (PathStep із обраною смугою/лінією),
+// або порожній вектор, якщо шляху немає.
+std::vector<PathStep> dijkstra(const std::vector<Route>& routes, int startId, int endId,
+                               double remainingBudget);
+
+// Перевантаження без бюджетного обмеження (budget = +inf): найшвидша лінія на кожному ребрі.
+std::vector<PathStep> dijkstra(const std::vector<Route>& routes, int startId, int endId);
 
 } // namespace algorithms
 } // namespace travel

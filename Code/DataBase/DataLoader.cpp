@@ -1,5 +1,6 @@
 #include "DataLoader.h"
 
+#include <filesystem>
 #include <fstream>
 #include <sstream>
 
@@ -9,14 +10,44 @@
 
 namespace travel {
 
+namespace {
+
+// Одна смуга/лінія у JSON: або рядок ("tram_line"), або об'єкт
+// {"type": "tram_line", "routeName": "Трамвай №8", "speedMultiplier": 1.6,
+//  "baseSpeedKmh": 35, "cost": 15, "waitTimeHours": 0.12}.
+// Відсутні поля беруться з дефолтів типу лінії.
+Lane parseLane(const JsonValue& item) {
+    if (item.isString()) {
+        LaneType type;
+        if (laneTypeFromString(item.asString(), type)) return Lane(type);
+        return Lane(LaneType::Sidewalk);
+    }
+    if (!item.isObject()) return Lane(LaneType::Sidewalk);
+
+    LaneType type = LaneType::Sidewalk;
+    laneTypeFromString(item.getString("type", "sidewalk"), type);
+    Lane lane(type, item.getString("routeName", item.getString("name", "")));
+    lane.speedMultiplier = item.getNumber("speedMultiplier", lane.speedMultiplier);
+    lane.baseSpeedKmh = item.getNumber("baseSpeedKmh", lane.baseSpeedKmh);
+    lane.cost = item.getNumber("cost", lane.cost);
+    lane.waitTimeHours = item.getNumber("waitTimeHours", lane.waitTimeHours);
+    return lane;
+}
+
+} // namespace
+
 bool DataLoader::load(const std::string& filename,
+                      std::vector<City>& cities,
                       std::vector<TouristDestination*>& catalog,
                       std::vector<Route>& routes,
                       std::string& error) {
     clearCatalog(catalog);
     routes.clear();
+    cities.clear();
 
-    std::ifstream file(filename, std::ios::binary);
+    // u8path: шлях у UTF-8 (з кирилицею) коректно відкривається і на Windows (wide-API),
+    // і на Linux/macOS — на відміну від ifstream(const char*), що залежить від ANSI-кодування.
+    std::ifstream file(std::filesystem::u8path(filename), std::ios::binary);
     if (!file.is_open()) {
         error = "Не вдалося відкрити файл бази даних: " + filename;
         return false;
@@ -37,13 +68,27 @@ bool DataLoader::load(const std::string& filename,
         return false;
     }
 
-    // --- каталог туристичних об'єктів ---
+    // --- міста / агломерації ---
+    const JsonValue& cityItems = root.at("cities");
+    if (cityItems.isArray()) {
+        for (const JsonValue& item : cityItems.asArray()) {
+            if (!item.isObject()) continue;
+            cities.emplace_back(
+                item.getInt("id"),
+                item.getString("name"),
+                item.getString("region", ""),
+                item.getString("description", ""));
+        }
+    }
+
+    // --- каталог туристичних об'єктів (з прив'язкою до міста cityId) ---
     const JsonValue& destinations = root.at("destinations");
     if (destinations.isArray()) {
         for (const JsonValue& item : destinations.asArray()) {
             if (!item.isObject()) continue;
             std::string type = item.getString("type", "attraction");
             int id = item.getInt("id");
+            int cityId = item.getInt("cityId", 0);
             std::string name = item.getString("name");
             double cost = item.getNumber("cost");
             double rating = item.getNumber("rating");
@@ -54,13 +99,13 @@ bool DataLoader::load(const std::string& filename,
 
             if (type == "museum") {
                 catalog.push_back(new Museum(
-                    id, name, cost, rating, visitDuration, openHour, closeHour, tags,
+                    id, cityId, name, cost, rating, visitDuration, openHour, closeHour, tags,
                     item.getInt("exhibitsCount"),
                     item.getBool("hasAudioGuide"),
                     item.getString("expositionTheme")));
             } else {
                 catalog.push_back(new Attraction(
-                    id, name, cost, rating, visitDuration, openHour, closeHour, tags,
+                    id, cityId, name, cost, rating, visitDuration, openHour, closeHour, tags,
                     item.getBool("isOutdoor"),
                     item.getString("architecturalStyle"),
                     item.getBool("isSeasonal")));
@@ -68,28 +113,23 @@ bool DataLoader::load(const std::string& filename,
         }
     }
 
-    // --- ребра графа маршрутів ---
+    // --- ребра графів маршрутів міст (з cityId та набором смуг lanes) ---
     const JsonValue& routeItems = root.at("routes");
     if (routeItems.isArray()) {
         for (const JsonValue& item : routeItems.asArray()) {
             if (!item.isObject()) continue;
-            std::vector<LaneType> lanes;
+            std::vector<Lane> lanes;
             const JsonValue& lanesJson = item.at("lanes");
             if (lanesJson.isArray()) {
                 for (const JsonValue& lane : lanesJson.asArray()) {
-                    LaneType laneType;
-                    if (lane.isString() && laneTypeFromString(lane.asString(), laneType)) {
-                        lanes.push_back(laneType);
-                    }
+                    lanes.push_back(parseLane(lane));
                 }
             }
             routes.emplace_back(
+                item.getInt("cityId", 0),
                 item.getInt("fromId"),
                 item.getInt("toId"),
                 item.getNumber("distanceKm"),
-                item.getNumber("travelTimeHours"),
-                item.getNumber("transportCost"),
-                item.getNumber("dailyTimeLimit", 8.0),
                 lanes);
         }
     }
