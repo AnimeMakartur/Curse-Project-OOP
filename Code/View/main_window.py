@@ -105,7 +105,7 @@ class MainWindow(QMainWindow):
         # --- ліва панель ---
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setMinimumWidth(300)
+        scroll.setMinimumWidth(600)
         left = QWidget()
         leftLayout = QVBoxLayout(left)
         scroll.setWidget(left)
