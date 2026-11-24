@@ -27,7 +27,7 @@ static void printPath(const std::vector<PathStep>& path) {
         std::cout << "  " << step.route.getFromId() << " -> " << step.route.getToId()
                   << " | " << step.route.getDistance() << " км"
                   << " | " << step.timeHours << " год"
-                  << " | " << step.cost << " грн"
+                  << " | " << step.cost << " EUR"
                   << " | " << step.lane.describe()
                   << " (еф. швидкість " << step.lane.effectiveSpeedKmh() << " км/год)\n";
     }
@@ -55,8 +55,8 @@ int main(int argc, char** argv) {
     }
 
     int cityId = system.getCities().front().getId();
-    Tourist tourist(1, "Єгор", 1000.0, true, 2, 8.0,
-                    {"історія", "архітектура", "природа"}, cityId);
+    Tourist tourist(1, "Єгор", 20.0, true, 2, 8.0,
+                    {"history", "architecture", "nature"}, cityId);
     system.setTouristProfile(tourist);
     std::cout << "\nПрофіль: " << system.getTourist().getName()
               << ", місто id=" << system.getTourist().getTargetCityId()
@@ -75,7 +75,7 @@ int main(int argc, char** argv) {
         int a = filtered.front()->getId();
         int b = filtered.back()->getId();
         std::cout << "\nНайкоротший шлях " << a << " -> " << b
-                  << " (Дейкстра, бюджет " << tourist.getDailyBudget() << " грн/день):\n";
+                  << " (Дейкстра, бюджет " << tourist.getDailyBudget() << " EUR/day):\n";
         printPath(system.findShortestPath(a, b));
 
         // Перевірка ізоляції міст: вершини різних міст не з'єднуються

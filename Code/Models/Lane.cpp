@@ -18,30 +18,30 @@ std::string laneTypeToString(LaneType type) {
 
 std::string laneTypeToUkr(LaneType type) {
     switch (type) {
-        case LaneType::Sidewalk:     return "тротуар";
-        case LaneType::BikeLane:     return "велодоріжка";
-        case LaneType::CarLane:      return "автомобільна смуга";
-        case LaneType::BusLane:      return "виділена автобусна смуга";
-        case LaneType::Metrobus:     return "лінія метробуса";
-        case LaneType::TramLine:     return "швидкісний трамвай";
-        case LaneType::SuburbanRail: return "приміська електричка";
-        case LaneType::Railway:      return "міська залізниця";
+        case LaneType::Sidewalk:     return "sidewalk";
+        case LaneType::BikeLane:     return "bike lane";
+        case LaneType::CarLane:      return "car lane";
+        case LaneType::BusLane:      return "dedicated bus lane";
+        case LaneType::Metrobus:     return "metrobus line";
+        case LaneType::TramLine:     return "express tram";
+        case LaneType::SuburbanRail: return "suburban train";
+        case LaneType::Railway:      return "city railway";
     }
-    return "тротуар";
+    return "sidewalk";
 }
 
 std::string laneTypeTransportUkr(LaneType type) {
     switch (type) {
-        case LaneType::Sidewalk:     return "Пішки (тротуар)";
-        case LaneType::BikeLane:     return "Велосипед (велодоріжка)";
-        case LaneType::CarLane:      return "Автомобіль (загальна смуга)";
-        case LaneType::BusLane:      return "Автобус (виділена автобусна смуга)";
-        case LaneType::Metrobus:     return "Метробус (BRT)";
-        case LaneType::TramLine:     return "Швидкісний трамвай";
-        case LaneType::SuburbanRail: return "Приміська електричка";
-        case LaneType::Railway:      return "Міська залізниця";
+        case LaneType::Sidewalk:     return "On foot (sidewalk)";
+        case LaneType::BikeLane:     return "Bicycle (bike lane)";
+        case LaneType::CarLane:      return "Car (general lane)";
+        case LaneType::BusLane:      return "Bus (dedicated bus lane)";
+        case LaneType::Metrobus:     return "Metrobus (BRT)";
+        case LaneType::TramLine:     return "Express tram";
+        case LaneType::SuburbanRail: return "Suburban train";
+        case LaneType::Railway:      return "City railway";
     }
-    return "Пішки (тротуар)";
+    return "On foot (sidewalk)";
 }
 
 bool laneTypeFromString(const std::string& text, LaneType& out) {
@@ -89,11 +89,11 @@ double laneTypeDefaultCost(LaneType type) {
         case LaneType::Sidewalk:     return 0.0;
         case LaneType::BikeLane:     return 0.0;
         case LaneType::CarLane:      return 0.0; // власне авто / безкоштовно
-        case LaneType::BusLane:      return 15.0;
-        case LaneType::Metrobus:     return 20.0;
-        case LaneType::TramLine:     return 15.0;
-        case LaneType::SuburbanRail: return 30.0;
-        case LaneType::Railway:      return 45.0;
+        case LaneType::BusLane:      return 0.30;
+        case LaneType::Metrobus:     return 0.40;
+        case LaneType::TramLine:     return 0.30;
+        case LaneType::SuburbanRail: return 0.60;
+        case LaneType::Railway:      return 0.90;
     }
     return 0.0;
 }

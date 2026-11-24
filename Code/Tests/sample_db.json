@@ -2,15 +2,15 @@
   "cities": [
     {
       "id": 1,
-      "name": "Львів",
-      "region": "Львівська область",
-      "description": "Компактне старе місто з трамвайною мережею та виділеними автобусними смугами"
+      "name": "Lviv",
+      "region": "Lviv Oblast",
+      "description": "Compact old town with a tram network and dedicated bus lanes"
     },
     {
       "id": 2,
-      "name": "Київ",
-      "region": "Київська область",
-      "description": "Мегаполіс із метробусом (BRT), приміськими електричками та міською залізницею"
+      "name": "Kyiv",
+      "region": "Kyiv Oblast",
+      "description": "Megacity with a metrobus (BRT), suburban trains and a city railway"
     }
   ],
   "destinations": [
@@ -18,105 +18,105 @@
       "type": "attraction",
       "id": 1,
       "cityId": 1,
-      "name": "Площа Ринок",
+      "name": "Rynok Square",
       "cost": 0,
       "rating": 4.8,
       "visitDuration": 1.5,
       "openHour": 0.0,
       "closeHour": 23.99,
-      "tags": ["історія", "архітектура"],
+      "tags": ["history", "architecture"],
       "isOutdoor": true,
-      "architecturalStyle": "ренесанс",
+      "architecturalStyle": "renaissance",
       "isSeasonal": false
     },
     {
       "type": "museum",
       "id": 2,
       "cityId": 1,
-      "name": "Музей історії Львова",
-      "cost": 80,
+      "name": "Lviv History Museum",
+      "cost": 1.6,
       "rating": 4.6,
       "visitDuration": 2.0,
       "openHour": 10.0,
       "closeHour": 18.0,
-      "tags": ["історія", "культура", "музеї"],
+      "tags": ["history", "culture", "museums"],
       "exhibitsCount": 1200,
       "hasAudioGuide": true,
-      "expositionTheme": "історія міста"
+      "expositionTheme": "city history"
     },
     {
       "type": "attraction",
       "id": 3,
       "cityId": 1,
-      "name": "Високий замок",
-      "cost": 50,
+      "name": "High Castle",
+      "cost": 1.0,
       "rating": 4.7,
       "visitDuration": 1.0,
       "openHour": 9.0,
       "closeHour": 20.0,
-      "tags": ["природа", "історія", "оглядові майданчики"],
+      "tags": ["nature", "history", "viewpoints"],
       "isOutdoor": true,
-      "architecturalStyle": "середньовіччя",
+      "architecturalStyle": "medieval",
       "isSeasonal": false
     },
     {
       "type": "attraction",
       "id": 4,
       "cityId": 1,
-      "name": "Оперний театр",
-      "cost": 200,
+      "name": "Opera House",
+      "cost": 4.0,
       "rating": 4.9,
       "visitDuration": 2.5,
       "openHour": 10.0,
       "closeHour": 21.0,
-      "tags": ["архітектура", "культура", "театр"],
+      "tags": ["architecture", "culture", "theatre"],
       "isOutdoor": false,
-      "architecturalStyle": "неоренесанс",
+      "architecturalStyle": "neo-renaissance",
       "isSeasonal": false
     },
     {
       "type": "attraction",
       "id": 11,
       "cityId": 2,
-      "name": "Хрещатик",
+      "name": "Khreshchatyk",
       "cost": 0,
       "rating": 4.5,
       "visitDuration": 1.5,
       "openHour": 0.0,
       "closeHour": 23.99,
-      "tags": ["історія", "архітектура"],
+      "tags": ["history", "architecture"],
       "isOutdoor": true,
-      "architecturalStyle": "класицизм",
+      "architecturalStyle": "classicism",
       "isSeasonal": false
     },
     {
       "type": "museum",
       "id": 12,
       "cityId": 2,
-      "name": "Національний музей історії України",
-      "cost": 100,
+      "name": "National Museum of the History of Ukraine",
+      "cost": 2.0,
       "rating": 4.7,
       "visitDuration": 2.0,
       "openHour": 10.0,
       "closeHour": 17.0,
-      "tags": ["історія", "музеї", "культура"],
+      "tags": ["history", "museums", "culture"],
       "exhibitsCount": 3000,
       "hasAudioGuide": true,
-      "expositionTheme": "історія України"
+      "expositionTheme": "history of Ukraine"
     },
     {
       "type": "attraction",
       "id": 13,
       "cityId": 2,
-      "name": "Національний ботанічний сад",
-      "cost": 60,
+      "name": "National Botanical Garden",
+      "cost": 1.2,
       "rating": 4.6,
       "visitDuration": 2.0,
       "openHour": 8.0,
       "closeHour": 19.0,
-      "tags": ["природа"],
+      "tags": ["nature"],
       "isOutdoor": true,
-      "architecturalStyle": "ландшафтний парк",
+      "architecturalStyle": "landscape park",
       "isSeasonal": true
     }
   ],
@@ -137,8 +137,8 @@
       "toId": 3,
       "distanceKm": 1.2,
       "lanes": [
-        {"type": "bus_lane", "routeName": "Автобус №29", "cost": 15, "waitTimeHours": 0.15},
-        {"type": "tram_line", "routeName": "Трамвай №8", "speedMultiplier": 1.6, "baseSpeedKmh": 35, "cost": 15, "waitTimeHours": 0.12},
+        {"type": "bus_lane", "routeName": "Bus 29", "cost": 0.3, "waitTimeHours": 0.15},
+        {"type": "tram_line", "routeName": "Tram 8", "speedMultiplier": 1.6, "baseSpeedKmh": 35, "cost": 0.3, "waitTimeHours": 0.12},
         {"type": "sidewalk"}
       ]
     },
@@ -148,8 +148,8 @@
       "toId": 4,
       "distanceKm": 2.5,
       "lanes": [
-        {"type": "metrobus", "routeName": "Метробус М1", "speedMultiplier": 1.5, "baseSpeedKmh": 40, "cost": 20, "waitTimeHours": 0.1},
-        {"type": "tram_line", "routeName": "Трамвай №1", "cost": 15, "waitTimeHours": 0.12},
+        {"type": "metrobus", "routeName": "Metrobus M1", "speedMultiplier": 1.5, "baseSpeedKmh": 40, "cost": 0.4, "waitTimeHours": 0.1},
+        {"type": "tram_line", "routeName": "Tram 1", "cost": 0.3, "waitTimeHours": 0.12},
         {"type": "car_lane"}
       ]
     },
@@ -159,8 +159,8 @@
       "toId": 4,
       "distanceKm": 12.0,
       "lanes": [
-        {"type": "railway", "routeName": "Міська залізниця S1", "baseSpeedKmh": 90, "speedMultiplier": 1.6, "cost": 45, "waitTimeHours": 0.3},
-        {"type": "suburban_rail", "routeName": "Електричка №801", "baseSpeedKmh": 70, "speedMultiplier": 1.4, "cost": 30, "waitTimeHours": 0.25},
+        {"type": "railway", "routeName": "City railway S1", "baseSpeedKmh": 90, "speedMultiplier": 1.6, "cost": 0.9, "waitTimeHours": 0.3},
+        {"type": "suburban_rail", "routeName": "Suburban train 801", "baseSpeedKmh": 70, "speedMultiplier": 1.4, "cost": 0.6, "waitTimeHours": 0.25},
         {"type": "car_lane"}
       ]
     },
@@ -172,7 +172,7 @@
       "lanes": [
         {"type": "sidewalk"},
         {"type": "bike_lane"},
-        {"type": "bus_lane", "routeName": "Автобус №55", "cost": 15, "waitTimeHours": 0.15}
+        {"type": "bus_lane", "routeName": "Bus 55", "cost": 0.3, "waitTimeHours": 0.15}
       ]
     },
     {
@@ -181,8 +181,8 @@
       "toId": 13,
       "distanceKm": 6.5,
       "lanes": [
-        {"type": "metrobus", "routeName": "Метробус М3", "speedMultiplier": 1.5, "baseSpeedKmh": 40, "cost": 20, "waitTimeHours": 0.1},
-        {"type": "bus_lane", "routeName": "Автобус №118", "cost": 15, "waitTimeHours": 0.2},
+        {"type": "metrobus", "routeName": "Metrobus M3", "speedMultiplier": 1.5, "baseSpeedKmh": 40, "cost": 0.4, "waitTimeHours": 0.1},
+        {"type": "bus_lane", "routeName": "Bus 118", "cost": 0.3, "waitTimeHours": 0.2},
         {"type": "sidewalk"}
       ]
     },
@@ -192,7 +192,7 @@
       "toId": 13,
       "distanceKm": 9.0,
       "lanes": [
-        {"type": "suburban_rail", "routeName": "Електричка Н06", "baseSpeedKmh": 70, "speedMultiplier": 1.4, "cost": 30, "waitTimeHours": 0.25},
+        {"type": "suburban_rail", "routeName": "Suburban train N06", "baseSpeedKmh": 70, "speedMultiplier": 1.4, "cost": 0.6, "waitTimeHours": 0.25},
         {"type": "car_lane"}
       ]
     }

@@ -11,34 +11,34 @@ import os
 from ctypes import c_char_p, c_double, c_int, c_void_p
 
 # Можливі місця розташування зібраної бібліотеки (за пріоритетом)
-_CANDIDATE_NAMES = ("travelcore.dll", "libtravelcore.so", "libtravelcore.dylib")
+_CandidateNames = ("travelcore.dll", "libtravelcore.so", "libtravelcore.dylib")
 
 
-def find_library(explicit_path=None):
+def findLibrary(explicitPath=None):
     """Шукає shared-бібліотеку ядра: env TRAVELCORE_LIB, потім папки Controllers."""
-    if explicit_path:
-        return explicit_path
-    env_path = os.environ.get("TRAVELCORE_LIB")
-    if env_path and os.path.exists(env_path):
-        return env_path
+    if explicitPath:
+        return explicitPath
+    envPath = os.environ.get("TRAVELCORE_LIB")
+    if envPath and os.path.exists(envPath):
+        return envPath
     here = os.path.dirname(os.path.abspath(__file__))
     for base in (os.path.join(here, "..", "Controllers"), here, os.getcwd()):
-        for name in _CANDIDATE_NAMES:
+        for name in _CandidateNames:
             candidate = os.path.join(base, name)
             if os.path.exists(candidate):
                 return candidate
     raise FileNotFoundError(
-        "Не знайдено зібрану бібліотеку ядра (travelcore.dll / libtravelcore.so). "
-        "Спочатку виконайте збірку: Code\\build.bat або Code/build.sh. "
-        "Або задайте шлях змінною середовища TRAVELCORE_LIB."
+        "Core library not found (travelcore.dll / libtravelcore.so). "
+        "Build it first: Code\\build.bat or Code/build.sh. "
+        "Or set the path via the TRAVELCORE_LIB environment variable."
     )
 
 
 class TravelClient:
     """Тонкий клієнт C API ядра TravelSystem (Controllers/c_api.cpp)."""
 
-    def __init__(self, lib_path=None):
-        self._lib = ctypes.CDLL(find_library(lib_path))
+    def __init__(self, libPath=None):
+        self._lib = ctypes.CDLL(findLibrary(libPath))
         self._handle = None
         self._bind()
         self._handle = self._lib.ts_create()
@@ -88,7 +88,7 @@ class TravelClient:
         lib.ts_free_string.argtypes = [c_void_p]
 
     # --- службовий метод: забрати рядок у C++ і звільнити його ---
-    def _take_json(self, ptr):
+    def _takeJson(self, ptr):
         if not ptr:
             return None
         try:
@@ -99,83 +99,83 @@ class TravelClient:
         return json.loads(text)
 
     # --- публічні методи (відповідають use case діаграмі) ---
-    def load_data(self, filename):
+    def loadData(self, filename):
         """Завантажити базу даних (міста + каталог + графи маршрутів) з JSON-файлу."""
         ok = self._lib.ts_load_data(self._handle, filename.encode("utf-8")) == 1
         if not ok:
             err = self._lib.ts_last_error()
             raise RuntimeError(
-                "Не вдалося завантажити БД: %s (%s)" % (filename, err.decode("utf-8") if err else "?")
+                "Failed to load the database: %s (%s)" % (filename, err.decode("utf-8") if err else "?")
             )
         return True
 
-    def get_cities(self):
+    def getCities(self):
         """Список міст/агломерацій із завантаженої бази: [{id, name, region, description}]."""
-        return self._take_json(self._lib.ts_get_cities(self._handle)) or []
+        return self._takeJson(self._lib.ts_get_cities(self._handle)) or []
 
-    def cities_count(self):
+    def citiesCount(self):
         return self._lib.ts_cities_count(self._handle)
 
-    def set_tourist(self, name, budget, is_total_budget, days, daily_time_limit, interests,
-                    city_id=-1):
-        """Створити/редагувати профіль туриста (UC1, UC4, UC5) із обраним містом city_id."""
-        interests_csv = ",".join(interests)
+    def setTourist(self, name, budget, isTotalBudget, days, dailyTimeLimit, interests,
+                   cityId=-1):
+        """Створити/редагувати профіль туриста (UC1, UC4, UC5) із обраним містом cityId."""
+        interestsCsv = ",".join(interests)
         self._lib.ts_set_tourist(
             self._handle,
             1,
             name.encode("utf-8"),
             float(budget),
-            1 if is_total_budget else 0,
+            1 if isTotalBudget else 0,
             int(days),
-            float(daily_time_limit),
-            interests_csv.encode("utf-8"),
-            int(city_id),
+            float(dailyTimeLimit),
+            interestsCsv.encode("utf-8"),
+            int(cityId),
         )
 
-    def set_target_city(self, city_id):
+    def setTargetCity(self, cityId):
         """Змінити обране місто/агломерацію у поточному профілі туриста."""
-        self._lib.ts_set_target_city(self._handle, int(city_id))
+        self._lib.ts_set_target_city(self._handle, int(cityId))
 
-    def get_profile(self):
-        return self._take_json(self._lib.ts_get_profile(self._handle))
+    def getProfile(self):
+        return self._takeJson(self._lib.ts_get_profile(self._handle))
 
-    def catalog_size(self):
+    def catalogSize(self):
         return self._lib.ts_catalog_size(self._handle)
 
-    def routes_count(self):
+    def routesCount(self):
         return self._lib.ts_routes_count(self._handle)
 
-    def get_catalog(self, city_id=-1):
-        """Повний каталог об'єктів міста (city_id=-1 — усі міста) для GUI-таблиці."""
-        return self._take_json(self._lib.ts_catalog(self._handle, int(city_id))) or []
+    def getCatalog(self, cityId=-1):
+        """Повний каталог об'єктів міста (cityId=-1 — усі міста) для GUI-таблиці."""
+        return self._takeJson(self._lib.ts_catalog(self._handle, int(cityId))) or []
 
-    def get_routes(self, city_id=-1):
+    def getRoutes(self, cityId=-1):
         """Ребра транспортного графа міста зі списком смуг/ліній."""
-        return self._take_json(self._lib.ts_get_routes(self._handle, int(city_id))) or []
+        return self._takeJson(self._lib.ts_get_routes(self._handle, int(cityId))) or []
 
-    def filter_destinations(self):
+    def filterDestinations(self):
         """Лінійний пошук/фільтрація каталогу обраного міста (UC6)."""
-        return self._take_json(self._lib.ts_filter_destinations(self._handle)) or []
+        return self._takeJson(self._lib.ts_filter_destinations(self._handle)) or []
 
-    def sorted_destinations(self):
+    def sortedDestinations(self):
         """Фільтрація + оцінка релевантності + сортування (UC6, UC7, UC9)."""
-        return self._take_json(self._lib.ts_sorted_destinations(self._handle)) or []
+        return self._takeJson(self._lib.ts_sorted_destinations(self._handle)) or []
 
-    def find_shortest_path(self, from_id, to_id, budget=None):
+    def findShortestPath(self, fromId, toId, budget=None):
         """Оптимальний маршрут алгоритмом Дейкстри (UC8) з деталізацією ліній транспорту."""
         if budget is None:
-            return self._take_json(
-                self._lib.ts_find_shortest_path(self._handle, int(from_id), int(to_id))
+            return self._takeJson(
+                self._lib.ts_find_shortest_path(self._handle, int(fromId), int(toId))
             ) or []
-        return self._take_json(
+        return self._takeJson(
             self._lib.ts_find_shortest_path_budget(
-                self._handle, int(from_id), int(to_id), float(budget)
+                self._handle, int(fromId), int(toId), float(budget)
             )
         ) or []
 
-    def generate_plan(self):
+    def generatePlan(self):
         """Згенерувати персоналізований туристичний план (UC2)."""
-        return self._take_json(self._lib.ts_generate_plan(self._handle))
+        return self._takeJson(self._lib.ts_generate_plan(self._handle))
 
     def close(self):
         if self._handle is not None:

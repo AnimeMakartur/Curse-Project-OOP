@@ -49,7 +49,7 @@ bool DataLoader::load(const std::string& filename,
     // і на Linux/macOS — на відміну від ifstream(const char*), що залежить від ANSI-кодування.
     std::ifstream file(std::filesystem::u8path(filename), std::ios::binary);
     if (!file.is_open()) {
-        error = "Не вдалося відкрити файл бази даних: " + filename;
+        error = "Failed to open database file: " + filename;
         return false;
     }
     std::ostringstream buffer;
@@ -59,12 +59,12 @@ bool DataLoader::load(const std::string& filename,
     try {
         root = JsonValue::parse(buffer.str());
     } catch (const std::exception& e) {
-        error = std::string("Помилка розбору JSON: ") + e.what();
+        error = std::string("JSON parse error: ") + e.what();
         return false;
     }
 
     if (!root.isObject()) {
-        error = "Корінь JSON має бути об'єктом";
+        error = "JSON root must be an object";
         return false;
     }
 

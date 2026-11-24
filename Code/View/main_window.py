@@ -1,8 +1,11 @@
 """Головне вікно TravelSystem (шар представлення, PyQt6).
 
-Ліва панель: завантаження БД, вибір міста/агломерації, профіль туриста, запити.
+Ліва панель: обране місто/агломерація, профіль туриста, запити.
 Права частина (вкладки): каталог об'єктів обраного міста (QTableWidget),
 згенерований план по днях із деталями переходів, метрики, шлях Дейкстри.
+
+База даних (travel_db.json) завантажується автоматично при старті —
+користувач не натискає кнопок і не обирає файл, БД працює за кулісами.
 """
 
 import os
@@ -13,7 +16,6 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDoubleSpinBox,
-    QFileDialog,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
@@ -38,304 +40,306 @@ from PyQt6.QtWidgets import (
 
 from travel_client import TravelClient
 
-INTEREST_HINT = "наприклад: історія, архітектура, природа, їжа, музеї"
+DefaultDb = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "DataBase", "travel_db.json"
+)
 
-CATALOG_COLUMNS = [
-    "ID", "Тип", "Назва", "Ціна, грн", "Рейтинг", "Огляд, год",
-    "Відкрито", "Закрито", "Теги", "Релевантність", "Деталі",
+InterestHint = "e.g.: history, architecture, nature, food, museums"
+
+CatalogColumns = [
+    "ID", "Type", "Name", "Price, EUR", "Rating", "Visit, h",
+    "Opens", "Closes", "Tags", "Relevance", "Details",
 ]
 # індекси числових колонок для сортування
-CATALOG_NUMERIC = {0, 3, 4, 5, 6, 7, 9}
+CatalogNumeric = {0, 3, 4, 5, 6, 7, 9}
 
-SORT_OPTIONS = ["Без сортування", "Релевантність ↓", "Ціна ↑", "Ціна ↓", "Рейтинг ↓"]
+SortOptions = ["No sorting", "Relevance ↓", "Price ↑", "Price ↓", "Rating ↓"]
 
-PLAN_COLUMNS = ["Крок", "Час, год", "Вартість, грн", "Деталі"]
+PlanColumns = ["Step", "Time, h", "Cost, EUR", "Details"]
 
 
-def _num_item(value, text=None):
+def _numItem(value, text=None):
     """Числова комірка таблиці: сортується за числом, відображає text."""
     item = QTableWidgetItem(text if text is not None else f"{value:g}")
     item.setData(Qt.ItemDataRole.EditRole, float(value))
     return item
 
 
-def _text_item(text):
+def _textItem(text):
     item = QTableWidgetItem(str(text))
     item.setData(Qt.ItemDataRole.EditRole, str(text))
     return item
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, db_path=None):
+    def __init__(self, dbPath=None):
         super().__init__()
-        self.setWindowTitle("TravelSystem — персоналізований підбір туристичного плану")
+        self.setWindowTitle("TravelSystem — Personalized Travel Planner")
         self.resize(1280, 760)
 
         self.client = None
         self.cities = []
-        self.last_plan = None
-        self._search_text = ""
+        self.lastPlan = None
+        self._searchText = ""
+        self._sizesApplied = False
+        # Шлях до бази фіксований за кулісами; аргумент CLI може його лише перевизначити
+        self.dbPath = os.path.normpath(dbPath) if dbPath else os.path.normpath(DefaultDb)
 
-        self._build_ui(db_path or "")
-        self._connect_client()
-        if db_path:
-            self.edit_db.setText(os.path.normpath(db_path))
+        self._buildUi()
+        self._connectClient()
+        self._autoLoadDb()
+
+    def showEvent(self, event):
+        # Фіксуємо розклад спліттера, щойно відомий реальний розмір вікна,
+        # щоб ліва панель не стискалася на старті
+        super().showEvent(event)
+        if not self._sizesApplied:
+            self._sizesApplied = True
+            self.splitter.setSizes([340, max(200, self.width() - 340)])
 
     # ---------------- побудова інтерфейсу ----------------
-    def _build_ui(self, db_path):
-        splitter = QSplitter(Qt.Orientation.Horizontal, self)
-        self.setCentralWidget(splitter)
+    def _buildUi(self):
+        self.splitter = QSplitter(Qt.Orientation.Horizontal, self)
+        self.setCentralWidget(self.splitter)
 
         # --- ліва панель ---
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        scroll.setMinimumWidth(300)
         left = QWidget()
-        left_layout = QVBoxLayout(left)
+        leftLayout = QVBoxLayout(left)
         scroll.setWidget(left)
-        splitter.addWidget(scroll)
+        self.splitter.addWidget(scroll)
 
-        # База даних
-        gb_db = QGroupBox("1. База даних (travel_db.json)")
-        db_layout = QVBoxLayout(gb_db)
-        row = QHBoxLayout()
-        self.edit_db = QLineEdit(db_path)
-        self.edit_db.setPlaceholderText("Шлях до JSON бази даних")
-        row.addWidget(self.edit_db)
-        btn_browse = QPushButton("Огляд...")
-        btn_browse.clicked.connect(self.on_browse_db)
-        row.addWidget(btn_browse)
-        db_layout.addLayout(row)
-        self.btn_load = QPushButton("Завантажити базу даних")
-        self.btn_load.clicked.connect(self.on_load_db)
-        db_layout.addWidget(self.btn_load)
-        self.lbl_db_status = QLabel("Базу не завантажено")
-        self.lbl_db_status.setWordWrap(True)
-        db_layout.addWidget(self.lbl_db_status)
-        left_layout.addWidget(gb_db)
+        # Статус бази даних (автозавантаження, без елементів керування — за кулісами)
+        self.lblDbInfo = QLabel("Database: loading automatically...")
+        self.lblDbInfo.setWordWrap(True)
+        self.lblDbInfo.setStyleSheet("color: gray;")
+        leftLayout.addWidget(self.lblDbInfo)
 
         # Місто / агломерація
-        gb_city = QGroupBox("2. Місто / агломерація")
-        city_layout = QVBoxLayout(gb_city)
-        self.combo_city = QComboBox()
-        self.combo_city.currentIndexChanged.connect(self.on_city_changed)
-        city_layout.addWidget(self.combo_city)
-        self.lbl_city_desc = QLabel("")
-        self.lbl_city_desc.setWordWrap(True)
-        city_layout.addWidget(self.lbl_city_desc)
-        left_layout.addWidget(gb_city)
+        gbCity = QGroupBox("1. City / agglomeration")
+        cityLayout = QVBoxLayout(gbCity)
+        self.comboCity = QComboBox()
+        self.comboCity.currentIndexChanged.connect(self.onCityChanged)
+        cityLayout.addWidget(self.comboCity)
+        self.lblCityDesc = QLabel("")
+        self.lblCityDesc.setWordWrap(True)
+        cityLayout.addWidget(self.lblCityDesc)
+        leftLayout.addWidget(gbCity)
 
         # Профіль туриста
-        gb_prof = QGroupBox("3. Профіль туриста")
-        form = QFormLayout(gb_prof)
-        self.edit_name = QLineEdit("Турист")
-        form.addRow("Ім'я:", self.edit_name)
-        self.spin_budget = QDoubleSpinBox()
-        self.spin_budget.setRange(0, 10_000_000)
-        self.spin_budget.setValue(1000)
-        self.spin_budget.setSuffix(" грн")
-        form.addRow("Бюджет:", self.spin_budget)
-        self.combo_budget_mode = QComboBox()
-        self.combo_budget_mode.addItems(["на один день", "на всю подорож"])
-        form.addRow("Бюджет задано:", self.combo_budget_mode)
-        self.spin_days = QSpinBox()
-        self.spin_days.setRange(1, 30)
-        self.spin_days.setValue(2)
-        form.addRow("Днів у подорожі:", self.spin_days)
-        self.spin_time = QDoubleSpinBox()
-        self.spin_time.setRange(1, 24)
-        self.spin_time.setValue(8)
-        self.spin_time.setSuffix(" год")
-        form.addRow("Час на день:", self.spin_time)
-        self.edit_interests = QLineEdit("історія, архітектура")
-        form.addRow("Інтереси (через кому):", self.edit_interests)
-        hint = QLabel(INTEREST_HINT)
+        gbProf = QGroupBox("2. Tourist profile")
+        form = QFormLayout(gbProf)
+        self.editName = QLineEdit("Tourist")
+        form.addRow("Name:", self.editName)
+        self.spinBudget = QDoubleSpinBox()
+        self.spinBudget.setRange(0, 10_000_000)
+        self.spinBudget.setValue(20)
+        self.spinBudget.setSuffix(" €")
+        form.addRow("Budget:", self.spinBudget)
+        self.comboBudgetMode = QComboBox()
+        self.comboBudgetMode.addItems(["per day", "for the whole trip"])
+        form.addRow("Budget is set:", self.comboBudgetMode)
+        self.spinDays = QSpinBox()
+        self.spinDays.setRange(1, 30)
+        self.spinDays.setValue(2)
+        form.addRow("Trip days:", self.spinDays)
+        self.spinTime = QDoubleSpinBox()
+        self.spinTime.setRange(1, 24)
+        self.spinTime.setValue(8)
+        self.spinTime.setSuffix(" h")
+        form.addRow("Hours per day:", self.spinTime)
+        self.editInterests = QLineEdit("history, architecture")
+        form.addRow("Interests (comma-separated):", self.editInterests)
+        hint = QLabel(InterestHint)
         hint.setStyleSheet("color: gray;")
         form.addRow("", hint)
-        self.btn_profile = QPushButton("Застосувати профіль")
-        self.btn_profile.clicked.connect(self.on_apply_profile)
-        form.addRow(self.btn_profile)
-        left_layout.addWidget(gb_prof)
+        self.btnProfile = QPushButton("Apply profile")
+        self.btnProfile.clicked.connect(self.onApplyProfile)
+        form.addRow(self.btnProfile)
+        leftLayout.addWidget(gbProf)
 
         # Запити
-        gb_actions = QGroupBox("4. Запити до системи")
-        act = QVBoxLayout(gb_actions)
-        self.btn_catalog = QPushButton("Каталог обраного міста")
-        self.btn_catalog.clicked.connect(self.on_show_catalog)
-        act.addWidget(self.btn_catalog)
-        self.btn_filter = QPushButton("Фільтр за параметрами туриста")
-        self.btn_filter.clicked.connect(self.on_filter)
-        act.addWidget(self.btn_filter)
-        self.btn_sorted = QPushButton("Сортувати за релевантністю")
-        self.btn_sorted.clicked.connect(self.on_sorted)
-        act.addWidget(self.btn_sorted)
-        self.btn_plan = QPushButton("Згенерувати персоналізований план")
-        self.btn_plan.clicked.connect(self.on_generate)
-        act.addWidget(self.btn_plan)
-        path_row = QHBoxLayout()
-        path_row.addWidget(QLabel("Шлях від id:"))
-        self.spin_from = QSpinBox()
-        self.spin_from.setRange(0, 100000)
-        self.spin_from.setValue(1)
-        path_row.addWidget(self.spin_from)
-        path_row.addWidget(QLabel("до id:"))
-        self.spin_to = QSpinBox()
-        self.spin_to.setRange(0, 100000)
-        self.spin_to.setValue(3)
-        path_row.addWidget(self.spin_to)
-        act.addLayout(path_row)
-        budget_row = QHBoxLayout()
-        self.chk_budget = QCheckBox("Власний бюджет на шлях:")
-        budget_row.addWidget(self.chk_budget)
-        self.spin_path_budget = QDoubleSpinBox()
-        self.spin_path_budget.setRange(0, 1_000_000)
-        self.spin_path_budget.setValue(500)
-        self.spin_path_budget.setSuffix(" грн")
-        budget_row.addWidget(self.spin_path_budget)
-        act.addLayout(budget_row)
-        self.btn_path = QPushButton("Знайти найкоротший шлях (Дейкстра)")
-        self.btn_path.clicked.connect(self.on_find_path)
-        act.addWidget(self.btn_path)
-        left_layout.addWidget(gb_actions)
-        left_layout.addStretch(1)
+        gbActions = QGroupBox("3. Queries")
+        act = QVBoxLayout(gbActions)
+        self.btnCatalog = QPushButton("Catalog of the selected city")
+        self.btnCatalog.clicked.connect(self.onShowCatalog)
+        act.addWidget(self.btnCatalog)
+        self.btnFilter = QPushButton("Filter by tourist parameters")
+        self.btnFilter.clicked.connect(self.onFilter)
+        act.addWidget(self.btnFilter)
+        self.btnSorted = QPushButton("Sort by relevance")
+        self.btnSorted.clicked.connect(self.onSorted)
+        act.addWidget(self.btnSorted)
+        self.btnPlan = QPushButton("Generate personalized plan")
+        self.btnPlan.clicked.connect(self.onGenerate)
+        act.addWidget(self.btnPlan)
+        pathRow = QHBoxLayout()
+        pathRow.addWidget(QLabel("Path from id:"))
+        self.spinFrom = QSpinBox()
+        self.spinFrom.setRange(0, 100000)
+        self.spinFrom.setValue(1)
+        pathRow.addWidget(self.spinFrom)
+        pathRow.addWidget(QLabel("to id:"))
+        self.spinTo = QSpinBox()
+        self.spinTo.setRange(0, 100000)
+        self.spinTo.setValue(3)
+        pathRow.addWidget(self.spinTo)
+        act.addLayout(pathRow)
+        budgetRow = QHBoxLayout()
+        self.chkBudget = QCheckBox("Custom path budget:")
+        budgetRow.addWidget(self.chkBudget)
+        self.spinPathBudget = QDoubleSpinBox()
+        self.spinPathBudget.setRange(0, 1_000_000)
+        self.spinPathBudget.setValue(10)
+        self.spinPathBudget.setSuffix(" €")
+        budgetRow.addWidget(self.spinPathBudget)
+        act.addLayout(budgetRow)
+        self.btnPath = QPushButton("Find shortest path (Dijkstra)")
+        self.btnPath.clicked.connect(self.onFindPath)
+        act.addWidget(self.btnPath)
+        leftLayout.addWidget(gbActions)
+        leftLayout.addStretch(1)
 
         # --- права частина: вкладки ---
         self.tabs = QTabWidget()
-        splitter.addWidget(self.tabs)
-        splitter.setStretchFactor(0, 0)
-        splitter.setStretchFactor(1, 1)
+        self.splitter.addWidget(self.tabs)
+        self.splitter.setStretchFactor(0, 0)
+        self.splitter.setStretchFactor(1, 1)
 
         # Вкладка каталогу
-        tab_catalog = QWidget()
-        cat_layout = QVBoxLayout(tab_catalog)
+        tabCatalog = QWidget()
+        catLayout = QVBoxLayout(tabCatalog)
         tools = QHBoxLayout()
-        self.edit_search = QLineEdit()
-        self.edit_search.setPlaceholderText("Пошук за назвою / тегами / деталями...")
-        self.edit_search.textChanged.connect(self.on_search_changed)
-        tools.addWidget(self.edit_search)
-        tools.addWidget(QLabel("Сортування:"))
-        self.combo_sort = QComboBox()
-        self.combo_sort.addItems(SORT_OPTIONS)
-        self.combo_sort.currentIndexChanged.connect(self.on_sort_changed)
-        tools.addWidget(self.combo_sort)
-        btn_refresh = QPushButton("Оновити")
-        btn_refresh.clicked.connect(self.on_show_catalog)
-        tools.addWidget(btn_refresh)
-        cat_layout.addLayout(tools)
-        self.table_catalog = QTableWidget(0, len(CATALOG_COLUMNS))
-        self.table_catalog.setHorizontalHeaderLabels(CATALOG_COLUMNS)
-        self.table_catalog.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.table_catalog.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.table_catalog.setSortingEnabled(True)
-        self.table_catalog.horizontalHeader().setSectionResizeMode(
+        self.editSearch = QLineEdit()
+        self.editSearch.setPlaceholderText("Search by name / tags / details...")
+        self.editSearch.textChanged.connect(self.onSearchChanged)
+        tools.addWidget(self.editSearch)
+        tools.addWidget(QLabel("Sort:"))
+        self.comboSort = QComboBox()
+        self.comboSort.addItems(SortOptions)
+        self.comboSort.currentIndexChanged.connect(self.onSortChanged)
+        tools.addWidget(self.comboSort)
+        btnRefresh = QPushButton("Refresh")
+        btnRefresh.clicked.connect(self.onShowCatalog)
+        tools.addWidget(btnRefresh)
+        catLayout.addLayout(tools)
+        self.tableCatalog = QTableWidget(0, len(CatalogColumns))
+        self.tableCatalog.setHorizontalHeaderLabels(CatalogColumns)
+        self.tableCatalog.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.tableCatalog.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.tableCatalog.setSortingEnabled(True)
+        self.tableCatalog.horizontalHeader().setSectionResizeMode(
             QHeaderView.ResizeMode.ResizeToContents
         )
-        self.table_catalog.horizontalHeader().setStretchLastSection(True)
-        cat_layout.addWidget(self.table_catalog)
-        self.lbl_catalog_info = QLabel("")
-        cat_layout.addWidget(self.lbl_catalog_info)
-        self.tabs.addTab(tab_catalog, "Каталог міста")
+        self.tableCatalog.horizontalHeader().setStretchLastSection(True)
+        catLayout.addWidget(self.tableCatalog)
+        self.lblCatalogInfo = QLabel("")
+        catLayout.addWidget(self.lblCatalogInfo)
+        self.tabs.addTab(tabCatalog, "City Catalog")
 
         # Вкладка плану
-        tab_plan = QWidget()
-        plan_layout = QVBoxLayout(tab_plan)
-        self.tree_plan = QTreeWidget()
-        self.tree_plan.setHeaderLabels(PLAN_COLUMNS)
-        self.tree_plan.header().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        tabPlan = QWidget()
+        planLayout = QVBoxLayout(tabPlan)
+        self.treePlan = QTreeWidget()
+        self.treePlan.setHeaderLabels(PlanColumns)
+        self.treePlan.header().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         for i in (1, 2):
-            self.tree_plan.header().setSectionResizeMode(i, QHeaderView.ResizeMode.ResizeToContents)
-        self.tree_plan.header().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
-        plan_layout.addWidget(self.tree_plan)
-        self.tabs.addTab(tab_plan, "Туристичний план")
+            self.treePlan.header().setSectionResizeMode(i, QHeaderView.ResizeMode.ResizeToContents)
+        self.treePlan.header().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
+        planLayout.addWidget(self.treePlan)
+        self.tabs.addTab(tabPlan, "Travel Plan")
 
         # Вкладка шляху (Дейкстра)
-        tab_path = QWidget()
-        path_layout = QVBoxLayout(tab_path)
-        self.tree_path = QTreeWidget()
-        self.tree_path.setHeaderLabels(
-            ["Перехід", "Відстань, км", "Час, год", "Вартість, грн", "Обраний транспорт / лінія"]
+        tabPath = QWidget()
+        pathLayout = QVBoxLayout(tabPath)
+        self.treePath = QTreeWidget()
+        self.treePath.setHeaderLabels(
+            ["Transfer", "Distance, km", "Time, h", "Cost, EUR", "Chosen transport / line"]
         )
-        self.tree_path.header().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        path_layout.addWidget(self.tree_path)
-        self.lbl_path_total = QLabel("")
-        path_layout.addWidget(self.lbl_path_total)
-        self.tabs.addTab(tab_path, "Шлях (Дейкстра)")
+        self.treePath.header().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        pathLayout.addWidget(self.treePath)
+        self.lblPathTotal = QLabel("")
+        pathLayout.addWidget(self.lblPathTotal)
+        self.tabs.addTab(tabPath, "Path (Dijkstra)")
 
         # Вкладка метрик
-        tab_metrics = QWidget()
-        met_layout = QVBoxLayout(tab_metrics)
-        self.lbl_metrics = QLabel("План ще не згенеровано")
-        self.lbl_metrics.setWordWrap(True)
-        met_layout.addWidget(self.lbl_metrics)
-        self.txt_summary = QTextEdit()
-        self.txt_summary.setReadOnly(True)
-        met_layout.addWidget(self.txt_summary)
-        self.tabs.addTab(tab_metrics, "Метрики та підсумок")
+        tabMetrics = QWidget()
+        metLayout = QVBoxLayout(tabMetrics)
+        self.lblMetrics = QLabel("Plan not generated yet")
+        self.lblMetrics.setWordWrap(True)
+        metLayout.addWidget(self.lblMetrics)
+        self.txtSummary = QTextEdit()
+        self.txtSummary.setReadOnly(True)
+        metLayout.addWidget(self.txtSummary)
+        self.tabs.addTab(tabMetrics, "Metrics & Summary")
 
-        self.statusBar().showMessage("Готово. Завантажте базу даних (travel_db.json).")
+        self.statusBar().showMessage("Ready — loading the database automatically...")
 
-    def _connect_client(self):
+    def _connectClient(self):
         try:
             self.client = TravelClient()
         except FileNotFoundError as e:
             self.client = None
-            QMessageBox.critical(self, "Немає бібліотеки ядра", str(e))
+            QMessageBox.critical(self, "Core library missing", str(e))
             self.statusBar().showMessage(str(e))
             return False
         return True
 
     # ---------------- допоміжні ----------------
-    def _require_client(self):
-        if self.client is None and not self._connect_client():
+    def _requireClient(self):
+        if self.client is None and not self._connectClient():
             return False
         return True
 
-    def _current_city_id(self):
-        data = self.combo_city.currentData()
+    def _currentCityId(self):
+        data = self.comboCity.currentData()
         return int(data) if data is not None else -1
 
-    def _parse_interests(self):
-        return [s.strip() for s in self.edit_interests.text().split(",") if s.strip()]
+    def _parseInterests(self):
+        return [s.strip() for s in self.editInterests.text().split(",") if s.strip()]
 
-    def _apply_profile(self):
+    def _applyProfile(self):
         """Передати профіль туриста у ядро разом із обраним містом."""
-        self.client.set_tourist(
-            self.edit_name.text().strip() or "Турист",
-            self.spin_budget.value(),
-            self.combo_budget_mode.currentIndex() == 1,  # "на всю подорож"
-            self.spin_days.value(),
-            self.spin_time.value(),
-            self._parse_interests(),
-            city_id=self._current_city_id(),
+        self.client.setTourist(
+            self.editName.text().strip() or "Tourist",
+            self.spinBudget.value(),
+            self.comboBudgetMode.currentIndex() == 1,  # "for the whole trip"
+            self.spinDays.value(),
+            self.spinTime.value(),
+            self._parseInterests(),
+            cityId=self._currentCityId(),
         )
 
-    def _fill_cities(self):
-        self.combo_city.blockSignals(True)
-        self.combo_city.clear()
+    def _fillCities(self):
+        self.comboCity.blockSignals(True)
+        self.comboCity.clear()
         for c in self.cities:
             label = f"{c['name']} (id={c['id']}"
             if c.get("region"):
                 label += f", {c['region']}"
             label += ")"
-            self.combo_city.addItem(label, c["id"])
-        self.combo_city.blockSignals(False)
+            self.comboCity.addItem(label, c["id"])
+        self.comboCity.blockSignals(False)
         if self.cities:
-            self.combo_city.setCurrentIndex(0)
-            self._update_city_desc()
+            self.comboCity.setCurrentIndex(0)
+            self._updateCityDesc()
 
-    def _update_city_desc(self):
-        idx = self.combo_city.currentIndex()
+    def _updateCityDesc(self):
+        idx = self.comboCity.currentIndex()
         if 0 <= idx < len(self.cities):
             c = self.cities[idx]
-            self.lbl_city_desc.setText(c.get("description", ""))
+            self.lblCityDesc.setText(c.get("description", ""))
         else:
-            self.lbl_city_desc.setText("")
+            self.lblCityDesc.setText("")
 
-    def _fill_catalog_table(self, rows):
-        self.table_catalog.setSortingEnabled(False)
-        self.table_catalog.setRowCount(0)
+    def _fillCatalogTable(self, rows):
+        self.tableCatalog.setSortingEnabled(False)
+        self.tableCatalog.setRowCount(0)
         for d in rows:
-            r = self.table_catalog.rowCount()
-            self.table_catalog.insertRow(r)
+            r = self.tableCatalog.rowCount()
+            self.tableCatalog.insertRow(r)
             values = [
                 (d["id"], None), (d["type"], None), (d["name"], None),
                 (d["cost"], None), (d["rating"], None), (d["visitDuration"], None),
@@ -345,193 +349,192 @@ class MainWindow(QMainWindow):
                 (d.get("details", ""), None),
             ]
             for col, (val, text) in enumerate(values):
-                if col in CATALOG_NUMERIC:
-                    self.table_catalog.setItem(r, col, _num_item(val, text))
+                if col in CatalogNumeric:
+                    self.tableCatalog.setItem(r, col, _numItem(val, text))
                 else:
-                    self.table_catalog.setItem(r, col, _text_item(text if text is not None else val))
-        self.table_catalog.setSortingEnabled(True)
-        self._apply_search_filter()
-        self.lbl_catalog_info.setText(f"Показано об'єктів: {self.table_catalog.rowCount()}")
+                    self.tableCatalog.setItem(r, col, _textItem(text if text is not None else val))
+        self.tableCatalog.setSortingEnabled(True)
+        self._applySearchFilter()
+        self.lblCatalogInfo.setText(f"Showing destinations: {self.tableCatalog.rowCount()}")
 
-    def _apply_search_filter(self):
-        text = self._search_text.lower()
-        for r in range(self.table_catalog.rowCount()):
+    def _applySearchFilter(self):
+        text = self._searchText.lower()
+        for r in range(self.tableCatalog.rowCount()):
             if not text:
-                self.table_catalog.setRowHidden(r, False)
+                self.tableCatalog.setRowHidden(r, False)
                 continue
             hay = " ".join(
-                self.table_catalog.item(r, c).text() for c in (1, 2, 8, 10)
+                self.tableCatalog.item(r, c).text() for c in (1, 2, 8, 10)
             ).lower()
-            self.table_catalog.setRowHidden(r, text not in hay)
+            self.tableCatalog.setRowHidden(r, text not in hay)
 
-    def _show_error(self, title, message):
+    def _showError(self, title, message):
         QMessageBox.warning(self, title, message)
         self.statusBar().showMessage(message)
 
     # ---------------- обробники ----------------
-    def on_browse_db(self):
-        path, _ = QFileDialog.getOpenFileName(
-            self, "Оберіть файл бази даних JSON", os.path.dirname(self.edit_db.text()) or ".",
-            "JSON (*.json);;Усі файли (*.*)",
-        )
-        if path:
-            self.edit_db.setText(path)
-
-    def on_load_db(self):
-        if not self._require_client():
+    def _autoLoadDb(self):
+        """Автоматично завантажити базу даних при старті — без дій користувача."""
+        if not self._requireClient():
             return
-        path = self.edit_db.text().strip()
         try:
-            self.client.load_data(path)
+            self.client.loadData(self.dbPath)
         except RuntimeError as e:
-            self._show_error("Помилка завантаження", str(e))
+            self.lblDbInfo.setText(f"Database: failed to load ({e})")
+            self._showError("Database load error", str(e))
             return
-        self.cities = self.client.get_cities()
-        self._fill_cities()
-        n_obj = self.client.catalog_size()
-        n_routes = self.client.routes_count()
-        self.lbl_db_status.setText(
-            f"Завантажено: міст {len(self.cities)}, об'єктів {n_obj}, ребер графів {n_routes}"
-        )
-        self.statusBar().showMessage(f"Базу завантажено: {path}")
-        self.on_show_catalog()
-
-    def on_city_changed(self, _index):
-        self._update_city_desc()
-        if not self._require_client():
-            return
-        city_id = self._current_city_id()
-        if city_id >= 0:
-            # профіль tourist міг уже існувати — оновлюємо лише місто
+        self.cities = self.client.getCities()
+        self._fillCities()
+        if self.cities:
             try:
-                self._apply_profile()
+                self._applyProfile()
             except Exception:
                 pass
-        self.statusBar().showMessage(f"Обрано місто id={city_id}")
-        self.on_show_catalog()
+        nObj = self.client.catalogSize()
+        nRoutes = self.client.routesCount()
+        self.lblDbInfo.setText(
+            f"Database (auto-loaded): {os.path.basename(self.dbPath)} — "
+            f"{len(self.cities)} cities, {nObj} destinations, {nRoutes} graph edges"
+        )
+        self.statusBar().showMessage(f"Database loaded automatically: {self.dbPath}")
+        self.onShowCatalog()
 
-    def on_apply_profile(self):
-        if not self._require_client():
+    def onCityChanged(self, _index):
+        self._updateCityDesc()
+        if not self._requireClient():
+            return
+        cityId = self._currentCityId()
+        if cityId >= 0:
+            # профіль tourist міг уже існувати — оновлюємо лише місто
+            try:
+                self._applyProfile()
+            except Exception:
+                pass
+        self.statusBar().showMessage(f"Selected city id={cityId}")
+        self.onShowCatalog()
+
+    def onApplyProfile(self):
+        if not self._requireClient():
             return
         try:
-            self._apply_profile()
+            self._applyProfile()
         except Exception as e:
-            self._show_error("Помилка профілю", str(e))
+            self._showError("Profile error", str(e))
             return
-        profile = self.client.get_profile()
+        profile = self.client.getProfile()
         self.statusBar().showMessage(
-            f"Профіль застосовано: місто id={profile.get('targetCityId')}, "
-            f"денний бюджет {profile.get('dailyBudget'):g} грн"
+            f"Profile applied: city id={profile.get('targetCityId')}, "
+            f"daily budget {profile.get('dailyBudget'):g} EUR"
         )
 
-    def on_show_catalog(self):
-        if not self._require_client():
+    def onShowCatalog(self):
+        if not self._requireClient():
             return
-        city_id = self._current_city_id()
-        rows = self.client.get_catalog(city_id)
-        self._fill_catalog_table(rows)
+        cityId = self._currentCityId()
+        rows = self.client.getCatalog(cityId)
+        self._fillCatalogTable(rows)
         self.tabs.setCurrentIndex(0)
 
-    def on_filter(self):
-        if not self._require_client():
+    def onFilter(self):
+        if not self._requireClient():
             return
-        self._apply_profile()
-        rows = self.client.filter_destinations()
-        self._fill_catalog_table(rows)
-        self.statusBar().showMessage(f"Фільтр (лінійний пошук) знайшов об'єктів: {len(rows)}")
+        self._applyProfile()
+        rows = self.client.filterDestinations()
+        self._fillCatalogTable(rows)
+        self.statusBar().showMessage(f"Filter (linear search) found destinations: {len(rows)}")
         self.tabs.setCurrentIndex(0)
 
-    def on_sorted(self):
-        if not self._require_client():
+    def onSorted(self):
+        if not self._requireClient():
             return
-        self._apply_profile()
-        rows = self.client.sorted_destinations()
-        self._fill_catalog_table(rows)
-        self.combo_sort.blockSignals(True)
-        self.combo_sort.setCurrentIndex(1)  # "Релевантність ↓"
-        self.combo_sort.blockSignals(False)
-        self.statusBar().showMessage(f"Відсортовано за релевантністю: {len(rows)} об'єктів")
+        self._applyProfile()
+        rows = self.client.sortedDestinations()
+        self._fillCatalogTable(rows)
+        self.comboSort.blockSignals(True)
+        self.comboSort.setCurrentIndex(1)  # "Relevance ↓"
+        self.comboSort.blockSignals(False)
+        self.statusBar().showMessage(f"Sorted by relevance: {len(rows)} destinations")
         self.tabs.setCurrentIndex(0)
 
-    def on_search_changed(self, text):
-        self._search_text = text
-        self._apply_search_filter()
+    def onSearchChanged(self, text):
+        self._searchText = text
+        self._applySearchFilter()
 
-    def on_sort_changed(self, index):
-        # combo_sort — перемикач сортування; фактичне сортування — через QTableWidget
+    def onSortChanged(self, index):
+        # comboSort — перемикач сортування; фактичне сортування — через QTableWidget
         if index == 1:
-            self.on_sorted()
+            self.onSorted()
         elif index in (2, 3, 4):
             col = {2: 3, 3: 3, 4: 4}[index]
             order = Qt.SortOrder.AscendingOrder if index == 2 else Qt.SortOrder.DescendingOrder
-            self.table_catalog.sortItems(col, order)
+            self.tableCatalog.sortItems(col, order)
 
-    def on_generate(self):
-        if not self._require_client():
+    def onGenerate(self):
+        if not self._requireClient():
             return
         try:
-            self._apply_profile()
-            plan = self.client.generate_plan()
+            self._applyProfile()
+            plan = self.client.generatePlan()
         except Exception as e:
-            self._show_error("Помилка генерації плану", str(e))
+            self._showError("Plan generation error", str(e))
             return
-        self.last_plan = plan
-        self._fill_plan_tree(plan)
-        self._fill_metrics(plan)
+        self.lastPlan = plan
+        self._fillPlanTree(plan)
+        self._fillMetrics(plan)
         self.statusBar().showMessage(
-            f"План згенеровано: витрати {plan.get('totalCost', 0):g} грн, "
-            f"залишок {plan.get('remainingBudget', 0):g} грн"
+            f"Plan generated: cost {plan.get('totalCost', 0):g} EUR, "
+            f"remaining {plan.get('remainingBudget', 0):g} EUR"
         )
         self.tabs.setCurrentIndex(1)
 
-    def _fill_plan_tree(self, plan):
-        self.tree_plan.clear()
+    def _fillPlanTree(self, plan):
+        self.treePlan.clear()
         for day in plan.get("days", []):
-            day_total_time = 0.0
-            day_total_cost = 0.0
-            day_node = QTreeWidgetItem(self.tree_plan, [f"День {day['day']}", "", "", ""])
-            day_node.setFirstColumnSpanned(True)
-            font = day_node.font(0)
+            dayTotalTime = 0.0
+            dayTotalCost = 0.0
+            dayNode = QTreeWidgetItem(self.treePlan, [f"Day {day['day']}", "", "", ""])
+            dayNode.setFirstColumnSpanned(True)
+            font = dayNode.font(0)
             font.setBold(True)
-            day_node.setFont(0, font)
+            dayNode.setFont(0, font)
             for item in day.get("items", []):
                 dest = item.get("destination") or {}
                 for t in item.get("transfers", []):
                     lane = t.get("lane", {})
-                    route_name = lane.get("routeName", "")
+                    routeName = lane.get("routeName", "")
                     transport = lane.get("transportUkr") or lane.get("description") or lane.get("type", "")
-                    if route_name:
-                        transport = f"{transport} «{route_name}»"
-                    label = f"→ перехід {t['fromId']} → {t['toId']}"
-                    detail = f"{t['distanceKm']:g} км — {transport}"
-                    row = QTreeWidgetItem(day_node, [label, f"{t['timeHours']:.3f}", f"{t['cost']:g}", detail])
-                    day_total_time += t["timeHours"]
-                    day_total_cost += t["cost"]
+                    if routeName:
+                        transport = f"{transport} «{routeName}»"
+                    label = f"→ transfer {t['fromId']} → {t['toId']}"
+                    detail = f"{t['distanceKm']:g} km — {transport}"
+                    row = QTreeWidgetItem(dayNode, [label, f"{t['timeHours']:.3f}", f"{t['cost']:g}", detail])
+                    dayTotalTime += t["timeHours"]
+                    dayTotalCost += t["cost"]
                 if dest:
                     label = f"• {dest['name']}"
                     detail = (
-                        f"{dest.get('type', '')}, рейтинг {dest.get('rating', 0):g}, "
-                        f"години {dest.get('openHour', 0):g}–{dest.get('closeHour', 0):g}, "
-                        f"теги: {', '.join(dest.get('tags', []))}"
+                        f"{dest.get('type', '')}, rating {dest.get('rating', 0):g}, "
+                        f"hours {dest.get('openHour', 0):g}–{dest.get('closeHour', 0):g}, "
+                        f"tags: {', '.join(dest.get('tags', []))}"
                     )
                     QTreeWidgetItem(
-                        day_node,
+                        dayNode,
                         [label, f"{dest.get('visitDuration', 0):g}", f"{dest.get('cost', 0):g}", detail],
                     )
-                    day_total_time += dest.get("visitDuration", 0)
-                    day_total_cost += dest.get("cost", 0)
-            day_node.setText(1, f"{day_total_time:.2f}")
-            day_node.setText(2, f"{day_total_cost:g}")
-        self.tree_plan.expandAll()
+                    dayTotalTime += dest.get("visitDuration", 0)
+                    dayTotalCost += dest.get("cost", 0)
+            dayNode.setText(1, f"{dayTotalTime:.2f}")
+            dayNode.setText(2, f"{dayTotalCost:g}")
+        self.treePlan.expandAll()
 
-    def _fill_metrics(self, plan):
-        self.lbl_metrics.setText(
-            "Загальні витрати: {cost:g} грн\n"
-            "Залишок бюджету: {rem:g} грн\n"
-            "Час у дорозі: {trav:.2f} год\n"
-            "Час на локаціях: {visit:.2f} год\n"
-            "Загальний час плану: {dur:.2f} год\n"
-            "Обране місто: id={city}".format(
+    def _fillMetrics(self, plan):
+        self.lblMetrics.setText(
+            "Total cost: {cost:g} EUR\n"
+            "Remaining budget: {rem:g} EUR\n"
+            "Travel time: {trav:.2f} h\n"
+            "Time on site: {visit:.2f} h\n"
+            "Total plan time: {dur:.2f} h\n"
+            "Selected city: id={city}".format(
                 cost=plan.get("totalCost", 0),
                 rem=plan.get("remainingBudget", 0),
                 trav=plan.get("totalTravelTime", 0),
@@ -540,31 +543,31 @@ class MainWindow(QMainWindow):
                 city=plan.get("targetCityId", -1),
             )
         )
-        self.txt_summary.setPlainText(plan.get("summary", ""))
+        self.txtSummary.setPlainText(plan.get("summary", ""))
 
-    def on_find_path(self):
-        if not self._require_client():
+    def onFindPath(self):
+        if not self._requireClient():
             return
         try:
-            self._apply_profile()
+            self._applyProfile()
         except Exception:
             pass
-        a, b = self.spin_from.value(), self.spin_to.value()
-        budget = self.spin_path_budget.value() if self.chk_budget.isChecked() else None
-        steps = self.client.find_shortest_path(a, b, budget=budget)
-        self.tree_path.clear()
-        total_time = 0.0
-        total_cost = 0.0
+        a, b = self.spinFrom.value(), self.spinTo.value()
+        budget = self.spinPathBudget.value() if self.chkBudget.isChecked() else None
+        steps = self.client.findShortestPath(a, b, budget=budget)
+        self.treePath.clear()
+        totalTime = 0.0
+        totalCost = 0.0
         if not steps:
-            QTreeWidgetItem(self.tree_path, [f"Шляху {a} → {b} у межах обраного міста немає", "", "", "", ""])
+            QTreeWidgetItem(self.treePath, [f"No path {a} → {b} within the selected city", "", "", "", ""])
         for s in steps:
             lane = s.get("lane", {})
-            route_name = lane.get("routeName", "")
+            routeName = lane.get("routeName", "")
             transport = lane.get("transportUkr") or lane.get("type", "")
-            if route_name:
-                transport = f"{transport} «{route_name}»"
+            if routeName:
+                transport = f"{transport} «{routeName}»"
             QTreeWidgetItem(
-                self.tree_path,
+                self.treePath,
                 [
                     f"{s['fromId']} → {s['toId']}",
                     f"{s['distanceKm']:g}",
@@ -573,10 +576,10 @@ class MainWindow(QMainWindow):
                     transport,
                 ],
             )
-            total_time += s["timeHours"]
-            total_cost += s["cost"]
-        self.lbl_path_total.setText(
-            f"Разом: {len(steps)} переходів, {total_time:.3f} год у дорозі, {total_cost:g} грн"
-            + (f" (бюджет на шлях: {budget:g} грн)" if budget is not None else " (бюджет профілю)")
+            totalTime += s["timeHours"]
+            totalCost += s["cost"]
+        self.lblPathTotal.setText(
+            f"Total: {len(steps)} transfers, {totalTime:.3f} h travel, {totalCost:g} EUR"
+            + (f" (path budget: {budget:g} EUR)" if budget is not None else " (profile budget)")
         )
         self.tabs.setCurrentIndex(2)

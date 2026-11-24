@@ -24,7 +24,7 @@ bool laneTypeFromString(const std::string& text, LaneType& out);
 // Базові параметри смуги за замовчуванням (можуть перевизначатися у JSON).
 double laneTypeDefaultBaseSpeed(LaneType type);       // базова швидкість, км/год
 double laneTypeDefaultSpeedMultiplier(LaneType type); // коефіцієнт приросту швидкості k_speed
-double laneTypeDefaultCost(LaneType type);            // вартість проїзду, грн
+double laneTypeDefaultCost(LaneType type);            // вартість проїзду, EUR
 double laneTypeDefaultWaitHours(LaneType type);       // середній час очікування транспорту, год
 
 // Одна смуга/лінія дороги: тип, назва маршруту, швидкісні параметри, вартість, очікування.
@@ -33,7 +33,7 @@ struct Lane {
     std::string routeName;        // опціонально: "Трамвай №8", "Метробус М1"
     double speedMultiplier = 1.0; // k_speed(l)
     double baseSpeedKmh = 5.0;    // v_base, км/год
-    double cost = 0.0;            // вартість проїзду, грн
+    double cost = 0.0;            // вартість проїзду, EUR
     double waitTimeHours = 0.0;   // t_wait, год
 
     Lane();

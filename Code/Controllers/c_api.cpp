@@ -207,7 +207,7 @@ TRAVEL_API void ts_destroy(void* handle) {
 
 TRAVEL_API int ts_load_data(void* handle, const char* filename) {
     if (!handle || !filename) {
-        g_lastError = "Некоректні аргументи ts_load_data";
+        g_lastError = "Invalid ts_load_data arguments";
         return 0;
     }
     std::string error;

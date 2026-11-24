@@ -18,10 +18,10 @@ double Attraction::calculateRelevance(const Tourist& t, double w1, double w2, do
 }
 
 std::string Attraction::getDetails() const {
-    return "Пам'ятка \"" + name + "\"" +
-           (isOutdoor ? ", відкрита" : ", закрита") +
-           ", стиль: " + architecturalStyle +
-           (isSeasonal ? ", сезонний об'єкт" : ", цілий рік");
+    return "Attraction \"" + name + "\"" +
+           (isOutdoor ? ", outdoor" : ", indoor") +
+           ", style: " + architecturalStyle +
+           (isSeasonal ? ", seasonal venue" : ", open year-round");
 }
 
 std::string Attraction::getType() const { return "attraction"; }

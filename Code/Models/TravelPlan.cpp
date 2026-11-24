@@ -48,41 +48,41 @@ void TravelPlan::calculateTotalMetrics() {
 
 std::string TravelPlan::exportPlanSummary() const {
     std::ostringstream out;
-    out << "=== Персоналізований туристичний план для " << tourist.getName()
-        << " (місто id=" << tourist.getTargetCityId() << ") ===\n";
-    out << "Бюджет на день: " << tourist.getDailyBudget()
-        << " грн, загальний бюджет: " << tourist.getTotalBudget()
-        << " грн, днів: " << tourist.getTripDays() << "\n\n";
+    out << "=== Personalized travel plan for " << tourist.getName()
+        << " (city id=" << tourist.getTargetCityId() << ") ===\n";
+    out << "Daily budget: " << tourist.getDailyBudget()
+        << " EUR, total budget: " << tourist.getTotalBudget()
+        << " EUR, days: " << tourist.getTripDays() << "\n\n";
 
     for (size_t day = 0; day < days.size(); ++day) {
-        out << "День " << (day + 1) << ":\n";
+        out << "Day " << (day + 1) << ":\n";
         const auto& items = days[day];
         if (items.empty()) {
-            out << "  (вільний день)\n\n";
+            out << "  (free day)\n\n";
             continue;
         }
         for (size_t i = 0; i < items.size(); ++i) {
             const DayItem& item = items[i];
             for (const PathStep& step : item.transfers) {
-                out << "  → перехід " << step.route.getFromId() << " -> " << step.route.getToId()
-                    << ": " << step.route.getDistance() << " км, "
-                    << step.timeHours << " год, " << step.cost << " грн — "
+                out << "  -> transfer " << step.route.getFromId() << " -> " << step.route.getToId()
+                    << ": " << step.route.getDistance() << " km, "
+                    << step.timeHours << " h, " << step.cost << " EUR — "
                     << step.lane.describe() << "\n";
             }
             if (item.destination) {
                 out << "  " << (i + 1) << ". " << item.destination->getName()
                     << " (" << item.destination->getType() << ", "
-                    << item.destination->getCost() << " грн, "
-                    << item.destination->getVisitDuration() << " год, рейтинг "
+                    << item.destination->getCost() << " EUR, "
+                    << item.destination->getVisitDuration() << " h, rating "
                     << item.destination->getRating() << ")\n";
             }
         }
         out << "\n";
     }
-    out << "Разом: вартість " << totalCost << " грн (залишок бюджету "
-        << getRemainingBudget() << " грн), час на локаціях " << totalVisitTime
-        << " год, час у дорозі " << totalTravelTime << " год, усього "
-        << totalDuration << " год.\n";
+    out << "Total: cost " << totalCost << " EUR (remaining budget "
+        << getRemainingBudget() << " EUR), time on site " << totalVisitTime
+        << " h, travel time " << totalTravelTime << " h, total "
+        << totalDuration << " h.\n";
     return out.str();
 }
 

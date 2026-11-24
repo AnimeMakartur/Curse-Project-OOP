@@ -19,9 +19,9 @@ double Museum::calculateRelevance(const Tourist& t, double w1, double w2, double
 }
 
 std::string Museum::getDetails() const {
-    return "Музей \"" + name + "\", тема експозиції: " + expositionTheme +
-           ", експонатів: " + std::to_string(exhibitsCount) +
-           (hasAudioGuide ? ", є аудіогід" : ", без аудіогіда");
+    return "Museum \"" + name + "\", exhibition theme: " + expositionTheme +
+           ", exhibits: " + std::to_string(exhibitsCount) +
+           (hasAudioGuide ? ", audio guide available" : ", no audio guide");
 }
 
 std::string Museum::getType() const { return "museum"; }

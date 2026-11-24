@@ -22,7 +22,7 @@ class TravelPlan {
 private:
     Tourist tourist;
     std::vector<std::vector<DayItem>> days; // [день (0-based)][пункти]
-    double totalCost = 0.0;         // квитки + проїзд, грн
+    double totalCost = 0.0;         // квитки + проїзд, EUR
     double totalDuration = 0.0;     // весь час плану, год
     double totalTravelTime = 0.0;   // час у дорозі, год
     double totalVisitTime = 0.0;    // час на локаціях, год

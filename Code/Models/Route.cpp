@@ -58,7 +58,7 @@ Lane Route::chooseBestLane(double remainingBudget) const {
             best = &lane;
         }
     }
-    // Якщо жодна смуга не вписується в бюджет — найдешевша (зазвичай пішки, 0 грн).
+    // Якщо жодна смуга не вписується в бюджет — найдешевша (зазвичай пішки, 0 EUR).
     return best ? *best : (cheapest ? *cheapest : Lane(LaneType::Sidewalk));
 }
 

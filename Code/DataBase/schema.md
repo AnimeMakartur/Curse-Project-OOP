@@ -37,7 +37,7 @@
 | `id` | int | унікальний ідентифікатор об'єкта (вершина графа маршрутів) |
 | `cityId` | int | id міста, якому належить об'єкт (`cities[].id`) |
 | `name` | string | назва |
-| `cost` | double | вартість вхідного квитка, грн |
+| `cost` | double | вартість вхідного квитка, EUR |
 | `rating` | double | рейтинг 0..5 |
 | `visitDuration` | double | час огляду, год |
 | `openHour` | double | година відкриття (напр. 9.0) |
@@ -80,21 +80,21 @@
 - `sidewalk` — пішохідний тротуар (5 км/год, безкоштовно)
 - `bike_lane` — велодоріжка (15 км/год, безкоштовно)
 - `car_lane` — загальна автомобільна смуга (30 км/год, безкоштовно)
-- `bus_lane` — виділена автобусна смуга (бонус до швидкості ×1.3, ~15 грн, очікування ~9 хв)
-- `metrobus` — лінія метробуса / BRT (високий пріоритет, ×1.5, ~20 грн, очікування ~6 хв)
-- `tram_line` — швидкісний / відокремлений трамвай (×1.6, ~15 грн, без заторів)
-- `suburban_rail` — приміська електричка (70 км/год ×1.4, ~30 грн, очікування ~15 хв)
-- `railway` — міська залізниця (90 км/год ×1.6, ~45 грн, максимальна швидкість на великі дистанції)
+- `bus_lane` — виділена автобусна смуга (бонус до швидкості ×1.3, ~0.30 EUR, очікування ~9 хв)
+- `metrobus` — лінія метробуса / BRT (високий пріоритет, ×1.5, ~0.40 EUR, очікування ~6 хв)
+- `tram_line` — швидкісний / відокремлений трамвай (×1.6, ~0.30 EUR, без заторів)
+- `suburban_rail` — приміська електричка (70 км/год ×1.4, ~0.60 EUR, очікування ~15 хв)
+- `railway` — міська залізниця (90 км/год ×1.6, ~0.90 EUR, максимальна швидкість на великі дистанції)
 
 **Об'єкт** — повна форма з перевизначенням параметрів:
 
 | Поле | Тип | Опис |
 |---|---|---|
 | `type` | string | один із типів вище (обов'язкове) |
-| `routeName` | string | назва/номер маршруту, опціонально (напр. `"Трамвай №8"`, `"Метробус М1"`) |
+| `routeName` | string | назва/номер маршруту, опціонально (напр. `"Tram 8"`, `"Metrobus M1"`) |
 | `speedMultiplier` | double | коефіцієнт приросту швидкості `k_speed` (за замовчуванням — для типу) |
 | `baseSpeedKmh` | double | базова швидкість `v_base`, км/год |
-| `cost` | double | вартість проїзду, грн |
+| `cost` | double | вартість проїзду, EUR |
 | `waitTimeHours` | double | середній час очікування транспорту, год |
 
 Час переміщення смугою/лінією `l` на ребрі довжиною `d`:
@@ -115,41 +115,41 @@ t(u,v) = min over l in lanes, cost(l) <= budget:  d / (v_base·k_speed(l)) + t_w
 ```json
 {
   "cities": [
-    { "id": 1, "name": "Львів", "region": "Львівська область",
-      "description": "Компактне старе місто з трамвайною мережею" },
-    { "id": 2, "name": "Київ", "region": "Київська область",
-      "description": "Мегаполіс із метробусом (BRT) та приміськими електричками" }
+    { "id": 1, "name": "Lviv", "region": "Lviv Oblast",
+      "description": "Compact old town with a tram network" },
+    { "id": 2, "name": "Kyiv", "region": "Kyiv Oblast",
+      "description": "Megacity with a metrobus (BRT) and suburban trains" }
   ],
   "destinations": [
     {
       "type": "attraction",
       "id": 1,
       "cityId": 1,
-      "name": "Площа Ринок",
+      "name": "Rynok Square",
       "cost": 0,
       "rating": 4.8,
       "visitDuration": 1.5,
       "openHour": 0.0,
       "closeHour": 23.99,
-      "tags": ["історія", "архітектура"],
+      "tags": ["history", "architecture"],
       "isOutdoor": true,
-      "architecturalStyle": "ренесанс",
+      "architecturalStyle": "renaissance",
       "isSeasonal": false
     },
     {
       "type": "museum",
       "id": 2,
       "cityId": 1,
-      "name": "Музей історії Львова",
-      "cost": 80,
+      "name": "Lviv History Museum",
+      "cost": 1.6,
       "rating": 4.6,
       "visitDuration": 2.0,
       "openHour": 10.0,
       "closeHour": 18.0,
-      "tags": ["історія", "культура", "музеї"],
+      "tags": ["history", "culture", "museums"],
       "exhibitsCount": 1200,
       "hasAudioGuide": true,
-      "expositionTheme": "історія міста"
+      "expositionTheme": "city history"
     }
   ],
   "routes": [
@@ -166,9 +166,9 @@ t(u,v) = min over l in lanes, cost(l) <= budget:  d / (v_base·k_speed(l)) + t_w
       "toId": 3,
       "distanceKm": 1.2,
       "lanes": [
-        { "type": "bus_lane", "routeName": "Автобус №29", "cost": 15, "waitTimeHours": 0.15 },
-        { "type": "tram_line", "routeName": "Трамвай №8", "speedMultiplier": 1.6,
-          "baseSpeedKmh": 35, "cost": 15, "waitTimeHours": 0.12 },
+        { "type": "bus_lane", "routeName": "Bus 29", "cost": 0.3, "waitTimeHours": 0.15 },
+        { "type": "tram_line", "routeName": "Tram 8", "speedMultiplier": 1.6,
+          "baseSpeedKmh": 35, "cost": 0.3, "waitTimeHours": 0.12 },
         "sidewalk"
       ]
     },
@@ -178,9 +178,9 @@ t(u,v) = min over l in lanes, cost(l) <= budget:  d / (v_base·k_speed(l)) + t_w
       "toId": 4,
       "distanceKm": 12.0,
       "lanes": [
-        { "type": "railway", "routeName": "Міська залізниця S1", "baseSpeedKmh": 90,
-          "speedMultiplier": 1.6, "cost": 45, "waitTimeHours": 0.3 },
-        { "type": "suburban_rail", "routeName": "Електричка №801", "cost": 30 },
+        { "type": "railway", "routeName": "City railway S1", "baseSpeedKmh": 90,
+          "speedMultiplier": 1.6, "cost": 0.9, "waitTimeHours": 0.3 },
+        { "type": "suburban_rail", "routeName": "Suburban train 801", "cost": 0.6 },
         "car_lane"
       ]
     }
