@@ -103,17 +103,19 @@ def run_gui(db_path=None):
 
     from main_window import MainWindow
 
-    # Якщо дисплей не задано/недоступний — не падаємо з "could not connect to display",
-    # а переходимо в headless-режим offscreen із попередженням у лог.
+    # Headless-fallback актуальний лише на Linux/X11: якщо дисплей не задано/недоступний —
+    # не падаємо з "could not connect to display", а переходимо в offscreen із попередженням.
+    # На Windows (os.name == "nt") Qt сам використовує рідний плагін "windows", тому
+    # перевірку DISPLAY пропускаємо — інакше GUI на голій Windows завжди ставав би offscreen.
     # Перевіряємо навіть коли QT_QPA_PLATFORM=xcb задано примусово (Dockerfile/compose).
     qpa = os.environ.get("QT_QPA_PLATFORM", "")
-    if qpa in ("", "xcb", "wayland", "wayland-egl") and not _display_reachable():
+    if os.name != "nt" and qpa in ("", "xcb", "wayland", "wayland-egl") and not _display_reachable():
         os.environ["QT_QPA_PLATFORM"] = "offscreen"
         print(
             "Увага: X-дисплей недоступний (DISPLAY=%r, WAYLAND_DISPLAY=%r) — GUI запущено "
-            "у headless-режимі QT_QPA_PLATFORM=offscreen. Для повноцінного GUI: Windows — "
-            "VcXsrv/Xming + .env DISPLAY=host.docker.internal:0; Linux — DISPLAY=:0 "
-            "(сокет /tmp/.X11-unix прокидається docker-compose)." % (
+            "у headless-режимі QT_QPA_PLATFORM=offscreen. Для повноцінного GUI на Linux — "
+            "DISPLAY=:0 (сокет /tmp/.X11-unix прокидається docker-compose); у Docker під "
+            "Windows — VcXsrv/Xming + .env DISPLAY=host.docker.internal:0." % (
                 os.environ.get("DISPLAY", ""), os.environ.get("WAYLAND_DISPLAY", ""))
         )
 

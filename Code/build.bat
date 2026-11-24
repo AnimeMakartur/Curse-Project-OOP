@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-REM Збірка ядра C++ у shared-бібліотеку Controllers\travelcore.dll
+REM Збірка ядра C++ у shared-бдбліотеку Controllers\travelcore.dll
 REM Порядок пошуку компілятора: g++ (MinGW/MSYS2) -> clang++ (LLVM) -> cl (MSVC Build Tools).
 REM Прапорець --tests додатково збирає Tests\.build\smoke_test.exe.
 cd /d "%~dp0"
