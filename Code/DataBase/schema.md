@@ -33,7 +33,7 @@
 
 | Поле | Тип | Опис |
 |---|---|---|
-| `type` | string | `"attraction"` або `"museum"` |
+| `type` | string | `"attraction"`, `"museum"` або `"hotel"` (готель — стартова точка маршруту; сприймається як `attraction` із тегом `hotel`/`accommodation`) |
 | `id` | int | унікальний ідентифікатор об'єкта (вершина графа маршрутів) |
 | `cityId` | int | id міста, якому належить об'єкт (`cities[].id`) |
 | `name` | string | назва |

@@ -1,8 +1,12 @@
 """Головне вікно TravelSystem (шар представлення, PyQt6).
 
-Ліва панель: обране місто/агломерація, профіль туриста, запити.
-Права частина (вкладки): каталог об'єктів обраного міста (QTableWidget),
-згенерований план по днях із деталями переходів, метрики, шлях Дейкстри.
+Двоетапний flow:
+  1. сторінка профілю туриста — ім'я, бюджет, тривалість поїздки та теги
+     інтересів (чипси у 4 категоріях); у код/JSON передаються точні
+     англійські ключі тегів для обрахунку відповідності з об'єктами каталогу;
+  2. лише після застосування профілю — сторінка планувальника: вибір міста,
+     стартової точки маршруту зі списку готелів обраного міста (ComboBox),
+     каталог об'єктів міста (QTableWidget), запити та згенерований план по днях.
 
 База даних (travel_db.json) завантажується автоматично при старті —
 користувач не натискає кнопок і не обирає файл, БД працює за кулісами.
@@ -17,6 +21,7 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
     QFormLayout,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QHeaderView,
@@ -28,6 +33,7 @@ from PyQt6.QtWidgets import (
     QScrollArea,
     QSpinBox,
     QSplitter,
+    QStackedWidget,
     QTabWidget,
     QTableWidget,
     QTableWidgetItem,
@@ -44,18 +50,71 @@ DefaultDb = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "..", "DataBase", "travel_db.json"
 )
 
-InterestHint = "e.g.: history, architecture, nature, food, museums"
+# Теги інтересів профілю, згруповані за 4 категоріями.
+# Ключ (перший елемент пари) — точний англійський ідентифікатор, який іде
+# у ядро/JSON і зіставляється з тегами об'єктів каталогу; підпис — для UI.
+InterestCategories = [
+    ("Thematic interests", [
+        ("history", "History"),
+        ("architecture", "Architecture"),
+        ("art", "Art"),
+        ("science_tech", "Science and Technology"),
+        ("nature", "Nature"),
+        ("religion", "Religion and Temples"),
+        ("entertainment", "Entertainment"),
+        ("gastronomy", "Gastronomy"),
+        ("shopping", "Shopping"),
+        ("panoramic", "Panoramas"),
+    ]),
+    ("Space and location format", [
+        ("outdoor", "Outdoor"),
+        ("indoor", "Indoor"),
+        ("scenic_route", "Scenic pedestrian routes"),
+    ]),
+    ("Pace and duration", [
+        ("quick_visit", "Quick visit (15–45 min)"),
+        ("deep_dive", "Deep dive (1.5–3+ h)"),
+        ("relaxing", "Relaxing"),
+        ("active", "Active leisure"),
+    ]),
+    ("Budget and audience", [
+        ("free_entry", "Free entry"),
+        ("budget_friendly", "Budget friendly"),
+        ("premium", "Premium / Exclusive"),
+        ("family_friendly", "Family friendly"),
+        ("nightlife", "Nightlife"),
+        ("accessible", "Accessible"),
+    ]),
+]
+AllInterestKeys = [key for _, items in InterestCategories for key, _ in items]
+DefaultInterests = {"history", "architecture"}
 
+# Об'єкт каталогу вважається готелем (кандидат на стартову точку маршруту),
+# якщо його type/name/теги містять один із маркерів.
+HotelMarkers = {"hotel", "hotels", "hostel", "accommodation", "lodging"}
+
+# Колонки каталогу без службових полів (без ID, Relevance, Visit h).
 CatalogColumns = [
-    "ID", "Type", "Name", "Price, EUR", "Rating", "Visit, h",
-    "Opens", "Closes", "Tags", "Relevance", "Details",
+    "Type", "Name", "Price, EUR", "Rating", "Opens", "Closes", "Tags", "Details",
 ]
 # індекси числових колонок для сортування
-CatalogNumeric = {0, 3, 4, 5, 6, 7, 9}
+CatalogNumeric = {2, 3, 4, 5}
+# колонки, за якими працює пошук (type, name, tags, details)
+CatalogSearchColumns = (0, 1, 6, 7)
 
 SortOptions = ["No sorting", "Relevance ↓", "Price ↑", "Price ↓", "Rating ↓"]
+SortColumnMap = {2: 2, 3: 2, 4: 3}          # індекс comboSort -> колонка таблиці
+SortAscending = {2: True, 3: False, 4: False}
 
 PlanColumns = ["Step", "Time, h", "Cost, EUR", "Details"]
+
+TagChipStyle = (
+    "QPushButton { border: 1px solid #b8b8b8; border-radius: 10px;"
+    " padding: 3px 10px; background: #f4f4f4; }"
+    "QPushButton:hover { border-color: #2d6cdf; }"
+    "QPushButton:checked { background: #2d6cdf; color: #ffffff;"
+    " border-color: #2d6cdf; }"
+)
 
 
 def _numItem(value, text=None):
@@ -75,12 +134,13 @@ class MainWindow(QMainWindow):
     def __init__(self, dbPath=None):
         super().__init__()
         self.setWindowTitle("TravelSystem — Personalized Travel Planner")
-        self.resize(1280, 760)
+        self.resize(1920, 1080)
 
         self.client = None
         self.cities = []
         self.lastPlan = None
         self._searchText = ""
+        self.tagButtons = {}  # ключ тега -> чип (QPushButton)
         # Шлях до бази фіксований за кулісами; аргумент CLI може його лише перевизначити
         self.dbPath = os.path.normpath(dbPath) if dbPath else os.path.normpath(DefaultDb)
 
@@ -90,8 +150,93 @@ class MainWindow(QMainWindow):
 
     # ---------------- побудова інтерфейсу ----------------
     def _buildUi(self):
-        self.splitter = QSplitter(Qt.Orientation.Horizontal, self)
-        self.setCentralWidget(self.splitter)
+        # Центральний QStackedWidget: сторінка 0 — профіль, сторінка 1 — планувальник
+        self.stack = QStackedWidget(self)
+        self.setCentralWidget(self.stack)
+        self.stack.addWidget(self._buildProfilePage())
+        self.stack.addWidget(self._buildPlannerPage())
+        self.stack.setCurrentIndex(0)
+
+    def _buildProfilePage(self):
+        """Сторінка 1: профіль туриста (заповнюється перед вибором міста)."""
+        page = QWidget()
+        pageLayout = QVBoxLayout(page)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        inner = QWidget()
+        inner.setMaximumWidth(1000)
+        innerLayout = QVBoxLayout(inner)
+        scroll.setWidget(inner)
+        row = QHBoxLayout()
+        row.addStretch(1)
+        row.addWidget(scroll, 1)
+        row.addStretch(1)
+        pageLayout.addLayout(row, 1)
+
+        gbProf = QGroupBox("Tourist Profile")
+        form = QFormLayout(gbProf)
+        self.editName = QLineEdit("Турист")
+        form.addRow("Name:", self.editName)
+        self.spinBudget = QDoubleSpinBox()
+        self.spinBudget.setRange(0, 10_000_000)
+        self.spinBudget.setValue(20)
+        self.spinBudget.setSuffix(" €")
+        form.addRow("Budget:", self.spinBudget)
+        self.comboBudgetMode = QComboBox()
+        self.comboBudgetMode.addItems(["на день", "на всю подорож"])
+        form.addRow("Budget mode:", self.comboBudgetMode)
+        self.spinDays = QSpinBox()
+        self.spinDays.setRange(1, 30)
+        self.spinDays.setValue(2)
+        form.addRow("Trip duration (days):", self.spinDays)
+        self.spinTime = QDoubleSpinBox()
+        self.spinTime.setRange(1, 24)
+        self.spinTime.setValue(8)
+        self.spinTime.setSuffix(" год")
+        form.addRow("Hours per day:", self.spinTime)
+        innerLayout.addWidget(gbProf)
+
+        # Теги інтересів: клікабельні чипси, згруповані за 4 категоріями
+        gbTags = QGroupBox("Interests (tags)")
+        tagsLayout = QVBoxLayout(gbTags)
+        for catTitle, items in InterestCategories:
+            catBox = QGroupBox(catTitle)
+            grid = QGridLayout(catBox)
+            for i, (key, label) in enumerate(items):
+                chip = QPushButton(label)
+                chip.setCheckable(True)
+                chip.setChecked(key in DefaultInterests)
+                chip.setStyleSheet(TagChipStyle)
+                chip.setToolTip(key)  # точний англійський ключ тега
+                chip.toggled.connect(self.onTagToggled)
+                self.tagButtons[key] = chip
+                grid.addWidget(chip, i // 3, i % 3)
+            tagsLayout.addWidget(catBox)
+        tagsLayout.addWidget(QLabel("Selected tag keys:"))
+        self.lblSelectedTags = QLabel("")
+        self.lblSelectedTags.setWordWrap(True)
+        self.lblSelectedTags.setStyleSheet("color: gray;")
+        tagsLayout.addWidget(self.lblSelectedTags)
+        self._updateSelectedTagsLabel()
+        innerLayout.addWidget(gbTags)
+
+        btnRow = QHBoxLayout()
+        btnRow.addStretch(1)
+        self.btnContinue = QPushButton("Apply profile and proceed to city selection →")
+        self.btnContinue.clicked.connect(self.onContinueProfile)
+        btnRow.addWidget(self.btnContinue)
+        innerLayout.addLayout(btnRow)
+        innerLayout.addStretch(1)
+        return page
+
+    def _buildPlannerPage(self):
+        """Сторінка 2: вибір міста, стартової точки (готель) та меню плану."""
+        page = QWidget()
+        pageLayout = QHBoxLayout(page)
+        self.splitter = QSplitter(Qt.Orientation.Horizontal, page)
+        pageLayout.addWidget(self.splitter)
 
         # --- ліва панель ---
         scroll = QScrollArea()
@@ -108,8 +253,12 @@ class MainWindow(QMainWindow):
         self.lblDbInfo.setStyleSheet("color: gray;")
         leftLayout.addWidget(self.lblDbInfo)
 
+        self.btnBack = QPushButton("← Edit tourist profile")
+        self.btnBack.clicked.connect(self.onBackToProfile)
+        leftLayout.addWidget(self.btnBack)
+
         # Місто / агломерація
-        gbCity = QGroupBox("1. City / agglomeration")
+        gbCity = QGroupBox("1. City")
         cityLayout = QVBoxLayout(gbCity)
         self.comboCity = QComboBox()
         self.comboCity.currentIndexChanged.connect(self.onCityChanged)
@@ -119,40 +268,23 @@ class MainWindow(QMainWindow):
         cityLayout.addWidget(self.lblCityDesc)
         leftLayout.addWidget(gbCity)
 
-        # Профіль туриста
-        gbProf = QGroupBox("2. Tourist profile")
-        form = QFormLayout(gbProf)
-        self.editName = QLineEdit("Tourist")
-        form.addRow("Name:", self.editName)
-        self.spinBudget = QDoubleSpinBox()
-        self.spinBudget.setRange(0, 10_000_000)
-        self.spinBudget.setValue(20)
-        self.spinBudget.setSuffix(" €")
-        form.addRow("Budget:", self.spinBudget)
-        self.comboBudgetMode = QComboBox()
-        self.comboBudgetMode.addItems(["per day", "for the whole trip"])
-        form.addRow("Budget is set:", self.comboBudgetMode)
-        self.spinDays = QSpinBox()
-        self.spinDays.setRange(1, 30)
-        self.spinDays.setValue(2)
-        form.addRow("Trip days:", self.spinDays)
-        self.spinTime = QDoubleSpinBox()
-        self.spinTime.setRange(1, 24)
-        self.spinTime.setValue(8)
-        self.spinTime.setSuffix(" h")
-        form.addRow("Hours per day:", self.spinTime)
-        self.editInterests = QLineEdit("history, architecture")
-        form.addRow("Interests (comma-separated):", self.editInterests)
-        hint = QLabel(InterestHint)
-        hint.setStyleSheet("color: gray;")
-        form.addRow("", hint)
-        self.btnProfile = QPushButton("Apply profile")
-        self.btnProfile.clicked.connect(self.onApplyProfile)
-        form.addRow(self.btnProfile)
-        leftLayout.addWidget(gbProf)
+        # Стартова точка маршруту — готель обраного міста (ComboBox, не ручний ID)
+        gbStart = QGroupBox("2. Starting point of the route (city hotel)")
+        startLayout = QVBoxLayout(gbStart)
+        startRow = QHBoxLayout()
+        startRow.addWidget(QLabel("Hotel:"))
+        self.comboStart = QComboBox()
+        self.comboStart.currentIndexChanged.connect(self.onStartChanged)
+        startRow.addWidget(self.comboStart, 1)
+        startLayout.addLayout(startRow)
+        self.lblStartHint = QLabel("")
+        self.lblStartHint.setWordWrap(True)
+        self.lblStartHint.setStyleSheet("color: gray;")
+        startLayout.addWidget(self.lblStartHint)
+        leftLayout.addWidget(gbStart)
 
         # Запити
-        gbActions = QGroupBox("3. Queries")
+        gbActions = QGroupBox("3. Actions")
         act = QVBoxLayout(gbActions)
         self.btnCatalog = QPushButton("Catalog of the selected city")
         self.btnCatalog.clicked.connect(self.onShowCatalog)
@@ -167,11 +299,6 @@ class MainWindow(QMainWindow):
         self.btnPlan.clicked.connect(self.onGenerate)
         act.addWidget(self.btnPlan)
         pathRow = QHBoxLayout()
-        pathRow.addWidget(QLabel("Path from id:"))
-        self.spinFrom = QSpinBox()
-        self.spinFrom.setRange(0, 100000)
-        self.spinFrom.setValue(1)
-        pathRow.addWidget(self.spinFrom)
         pathRow.addWidget(QLabel("to id:"))
         self.spinTo = QSpinBox()
         self.spinTo.setRange(0, 100000)
@@ -187,7 +314,7 @@ class MainWindow(QMainWindow):
         self.spinPathBudget.setSuffix(" €")
         budgetRow.addWidget(self.spinPathBudget)
         act.addLayout(budgetRow)
-        self.btnPath = QPushButton("Find shortest path (Dijkstra)")
+        self.btnPath = QPushButton("Find shortest path from the hotel (Dijkstra)")
         self.btnPath.clicked.connect(self.onFindPath)
         act.addWidget(self.btnPath)
         leftLayout.addWidget(gbActions)
@@ -266,7 +393,7 @@ class MainWindow(QMainWindow):
         metLayout.addWidget(self.txtSummary)
         self.tabs.addTab(tabMetrics, "Metrics & Summary")
 
-        self.statusBar().showMessage("Ready — loading the database automatically...")
+        return page
 
     def _connectClient(self):
         try:
@@ -288,18 +415,33 @@ class MainWindow(QMainWindow):
         data = self.comboCity.currentData()
         return int(data) if data is not None else -1
 
-    def _parseInterests(self):
-        return [s.strip() for s in self.editInterests.text().split(",") if s.strip()]
+    def _currentStartId(self):
+        data = self.comboStart.currentData()
+        return int(data) if data is not None else -1
+
+    def _selectedTags(self):
+        """Точні англійські ключі обраних тегів (у канонічному порядку категорій)."""
+        return [k for k in AllInterestKeys if k in self.tagButtons and self.tagButtons[k].isChecked()]
+
+    def _updateSelectedTagsLabel(self):
+        tags = self._selectedTags()
+        self.lblSelectedTags.setText(", ".join(tags) if tags else "—")
+
+    @staticmethod
+    def _isHotel(dest):
+        text = f"{dest.get('type', '')} {dest.get('name', '')}".lower()
+        tags = {str(t).lower() for t in dest.get("tags", [])}
+        return bool(tags & HotelMarkers) or any(m in text for m in ("hotel", "hostel", "готель"))
 
     def _applyProfile(self):
-        """Передати профіль туриста у ядро разом із обраним містом."""
+        """Передати профіль туриста у ядро разом із обраним містом (якщо є)."""
         self.client.setTourist(
-            self.editName.text().strip() or "Tourist",
+            self.editName.text().strip() or "Турист",
             self.spinBudget.value(),
-            self.comboBudgetMode.currentIndex() == 1,  # "for the whole trip"
+            self.comboBudgetMode.currentIndex() == 1,  # "на всю подорож"
             self.spinDays.value(),
             self.spinTime.value(),
-            self._parseInterests(),
+            self._selectedTags(),
             cityId=self._currentCityId(),
         )
 
@@ -325,6 +467,30 @@ class MainWindow(QMainWindow):
         else:
             self.lblCityDesc.setText("")
 
+    def _fillStartPoints(self):
+        """Список готелів обраного міста для старту маршруту (ComboBox)."""
+        self.comboStart.blockSignals(True)
+        self.comboStart.clear()
+        hotels = []
+        cityId = self._currentCityId()
+        if cityId >= 0 and self.client is not None:
+            for d in self.client.getCatalog(cityId):
+                if self._isHotel(d):
+                    hotels.append(d)
+        hotels.sort(key=lambda d: str(d.get("name", "")))
+        for h in hotels:
+            self.comboStart.addItem(f"{h['name']} (id={h['id']})", h["id"])
+        self.comboStart.blockSignals(False)
+        if hotels:
+            self.lblStartHint.setText(
+                f"Готелів у місті: {len(hotels)} — старт маршруту обирається зі списку."
+            )
+        else:
+            self.lblStartHint.setText(
+                "У базі немає готелів обраного міста (потрібен об'єкт із тегом "
+                "hotel/accommodation) — шлях від готелю недоступний."
+            )
+
     def _fillCatalogTable(self, rows):
         self.tableCatalog.setSortingEnabled(False)
         self.tableCatalog.setRowCount(0)
@@ -332,11 +498,10 @@ class MainWindow(QMainWindow):
             r = self.tableCatalog.rowCount()
             self.tableCatalog.insertRow(r)
             values = [
-                (d["id"], None), (d["type"], None), (d["name"], None),
-                (d["cost"], None), (d["rating"], None), (d["visitDuration"], None),
+                (d["type"], None), (d["name"], None),
+                (d["cost"], None), (d["rating"], None),
                 (d["openHour"], f"{d['openHour']:g}"), (d["closeHour"], f"{d['closeHour']:g}"),
                 (", ".join(d.get("tags", [])), None),
-                (d.get("relevance", 0.0), f"{d.get('relevance', 0.0):.3f}"),
                 (d.get("details", ""), None),
             ]
             for col, (val, text) in enumerate(values):
@@ -355,7 +520,7 @@ class MainWindow(QMainWindow):
                 self.tableCatalog.setRowHidden(r, False)
                 continue
             hay = " ".join(
-                self.tableCatalog.item(r, c).text() for c in (1, 2, 8, 10)
+                self.tableCatalog.item(r, c).text() for c in CatalogSearchColumns
             ).lower()
             self.tableCatalog.setRowHidden(r, text not in hay)
 
@@ -376,19 +541,49 @@ class MainWindow(QMainWindow):
             return
         self.cities = self.client.getCities()
         self._fillCities()
-        if self.cities:
-            try:
-                self._applyProfile()
-            except Exception:
-                pass
         nObj = self.client.catalogSize()
         nRoutes = self.client.routesCount()
         self.lblDbInfo.setText(
             f"Database (auto-loaded): {os.path.basename(self.dbPath)} — "
             f"{len(self.cities)} cities, {nObj} destinations, {nRoutes} graph edges"
         )
-        self.statusBar().showMessage(f"Database loaded automatically: {self.dbPath}")
-        self.onShowCatalog()
+        self.statusBar().showMessage(
+            f"Database loaded automatically: {self.dbPath} — заповніть профіль туриста"
+        )
+        # Залишаємось на сторінці профілю: місто та план — лише після профілю
+        self.stack.setCurrentIndex(0)
+
+    def onTagToggled(self, _checked):
+        self._updateSelectedTagsLabel()
+
+    def onContinueProfile(self):
+        """Застосувати профіль і перейти до вибору міста та меню плану."""
+        if not self._requireClient():
+            return
+        if not self.editName.text().strip():
+            self._showError("Профіль не заповнено", "Input your name")
+            return
+        if not self._selectedTags():
+            self._showError("Профіль не заповнено", "Chose tags, min one required")
+            return
+        try:
+            self._applyProfile()  # місто ще не обрано → cityId=-1
+        except Exception as e:
+            self._showError("Profile error", str(e))
+            return
+        self.stack.setCurrentIndex(1)
+        if self.cities:
+            self.comboCity.setCurrentIndex(0)
+            self.onCityChanged(0)
+        profile = self.client.getProfile()
+        self.statusBar().showMessage(
+            f"Профіль застосовано: {profile.get('name')}, "
+            f"теги: {', '.join(profile.get('interests', []))}. Chosen city: {self.comboCity.currentText()}."
+        )
+
+    def onBackToProfile(self):
+        self.stack.setCurrentIndex(0)
+        self.statusBar().showMessage("Редагування профілю туриста")
 
     def onCityChanged(self, _index):
         self._updateCityDesc()
@@ -396,27 +591,19 @@ class MainWindow(QMainWindow):
             return
         cityId = self._currentCityId()
         if cityId >= 0:
-            # профіль tourist міг уже існувати — оновлюємо лише місто
+            # профіль туриста вже застосовано — оновлюємо лише місто
             try:
                 self._applyProfile()
             except Exception:
                 pass
+        self._fillStartPoints()
         self.statusBar().showMessage(f"Selected city id={cityId}")
         self.onShowCatalog()
 
-    def onApplyProfile(self):
-        if not self._requireClient():
-            return
-        try:
-            self._applyProfile()
-        except Exception as e:
-            self._showError("Profile error", str(e))
-            return
-        profile = self.client.getProfile()
-        self.statusBar().showMessage(
-            f"Profile applied: city id={profile.get('targetCityId')}, "
-            f"daily budget {profile.get('dailyBudget'):g} EUR"
-        )
+    def onStartChanged(self, _index):
+        startId = self._currentStartId()
+        if startId >= 0:
+            self.statusBar().showMessage(f"Start point (hotel) id={startId}")
 
     def onShowCatalog(self):
         if not self._requireClient():
@@ -455,9 +642,9 @@ class MainWindow(QMainWindow):
         # comboSort — перемикач сортування; фактичне сортування — через QTableWidget
         if index == 1:
             self.onSorted()
-        elif index in (2, 3, 4):
-            col = {2: 3, 3: 3, 4: 4}[index]
-            order = Qt.SortOrder.AscendingOrder if index == 2 else Qt.SortOrder.DescendingOrder
+        elif index in SortColumnMap:
+            col = SortColumnMap[index]
+            order = Qt.SortOrder.AscendingOrder if SortAscending[index] else Qt.SortOrder.DescendingOrder
             self.tableCatalog.sortItems(col, order)
 
     def onGenerate(self):
@@ -543,7 +730,14 @@ class MainWindow(QMainWindow):
             self._applyProfile()
         except Exception:
             pass
-        a, b = self.spinFrom.value(), self.spinTo.value()
+        a = self._currentStartId()  # старт — обраний готель, а не ручний ID
+        if a < 0:
+            self._showError(
+                "Стартова точка не обрана",
+                "Оберіть готель зі списку стартових точок обраного міста.",
+            )
+            return
+        b = self.spinTo.value()
         budget = self.spinPathBudget.value() if self.chkBudget.isChecked() else None
         steps = self.client.findShortestPath(a, b, budget=budget)
         self.treePath.clear()

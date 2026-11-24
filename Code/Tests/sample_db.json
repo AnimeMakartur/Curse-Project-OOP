@@ -75,6 +75,21 @@
       "isSeasonal": false
     },
     {
+      "type": "hotel",
+      "id": 5,
+      "cityId": 1,
+      "name": "Atlas Hotel",
+      "cost": 0,
+      "rating": 4.5,
+      "visitDuration": 0,
+      "openHour": 0.0,
+      "closeHour": 23.99,
+      "tags": ["hotel", "accommodation"],
+      "isOutdoor": false,
+      "architecturalStyle": "art nouveau",
+      "isSeasonal": false
+    },
+    {
       "type": "attraction",
       "id": 11,
       "cityId": 2,
@@ -118,6 +133,21 @@
       "isOutdoor": true,
       "architecturalStyle": "landscape park",
       "isSeasonal": true
+    },
+    {
+      "type": "hotel",
+      "id": 14,
+      "cityId": 2,
+      "name": "Premier Kyiv Hotel",
+      "cost": 0,
+      "rating": 4.4,
+      "visitDuration": 0,
+      "openHour": 0.0,
+      "closeHour": 23.99,
+      "tags": ["hotel", "accommodation"],
+      "isOutdoor": false,
+      "architecturalStyle": "stalinist neoclassicism",
+      "isSeasonal": false
     }
   ],
   "routes": [
@@ -165,6 +195,16 @@
       ]
     },
     {
+      "cityId": 1,
+      "fromId": 5,
+      "toId": 1,
+      "distanceKm": 0.6,
+      "lanes": [
+        {"type": "sidewalk"},
+        {"type": "bike_lane"}
+      ]
+    },
+    {
       "cityId": 2,
       "fromId": 11,
       "toId": 12,
@@ -194,6 +234,16 @@
       "lanes": [
         {"type": "suburban_rail", "routeName": "Suburban train N06", "baseSpeedKmh": 70, "speedMultiplier": 1.4, "cost": 0.6, "waitTimeHours": 0.25},
         {"type": "car_lane"}
+      ]
+    },
+    {
+      "cityId": 2,
+      "fromId": 14,
+      "toId": 11,
+      "distanceKm": 0.8,
+      "lanes": [
+        {"type": "sidewalk"},
+        {"type": "bus_lane", "routeName": "Bus 55", "cost": 0.3, "waitTimeHours": 0.15}
       ]
     }
   ]
