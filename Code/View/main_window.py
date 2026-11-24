@@ -103,9 +103,9 @@ class MainWindow(QMainWindow):
         gb = self._group("Tourist Profile", QFormLayout); form = gb.layout()
         self.editName = QLineEdit("Турист"); form.addRow("Name:", self.editName)
         self.spinBudget = self._spin(QDoubleSpinBox, 0, 10_000_000, 20, " €"); form.addRow("Budget:", self.spinBudget)
-        self.comboBudgetMode = self._combo(["на день", "на всю подорож"]); form.addRow("Budget mode:", self.comboBudgetMode)
+        self.comboBudgetMode = self._combo(["on day", "for the whole trip"]); form.addRow("Budget mode:", self.comboBudgetMode)
         self.spinDays = self._spin(QSpinBox, 1, 30, 2); form.addRow("Trip duration (days):", self.spinDays)
-        self.spinTime = self._spin(QDoubleSpinBox, 1, 24, 8, " год"); form.addRow("Hours per day:", self.spinTime)
+        self.spinTime = self._spin(QDoubleSpinBox, 1, 24, 8, " h"); form.addRow("Hours per day:", self.spinTime)
         lay.addWidget(gb)
 
         gbTags = self._group("Interests (tags)"); tagsLay = gbTags.layout()
@@ -245,7 +245,7 @@ class MainWindow(QMainWindow):
 
     def _applyProfile(self):
         self.client.setTourist(
-            self.editName.text().strip() or "Турист", self.spinBudget.value(),
+            self.editName.text().strip() or "Tourist", self.spinBudget.value(),
             self.comboBudgetMode.currentIndex() == 1, self.spinDays.value(), self.spinTime.value(),
             self._selectedTags(), cityId=self._currentCityId())
 
