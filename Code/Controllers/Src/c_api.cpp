@@ -9,11 +9,11 @@
 #include <vector>
 
 #include "TravelSystem.h"
-#include "../Models/City.h"
-#include "../Models/PathStep.h"
-#include "../Models/Tourist.h"
-#include "../Models/TouristDestination.h"
-#include "../Models/TravelPlan.h"
+#include "City.h"
+#include "PathStep.h"
+#include "Tourist.h"
+#include "TouristDestination.h"
+#include "TravelPlan.h"
 
 #if defined(_WIN32)
   #define TRAVEL_API extern "C" __declspec(dllexport)

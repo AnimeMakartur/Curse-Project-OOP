@@ -5,11 +5,11 @@ REM Порядок пошуку компілятора: g++ (MinGW/MSYS2) -> cla
 REM Прапорець --tests додатково збирає Tests\.build\smoke_test.exe.
 cd /d "%~dp0"
 
-set "SOURCES=Models\City.cpp Models\Lane.cpp Models\PathStep.cpp Models\Tourist.cpp Models\TouristDestination.cpp Models\Attraction.cpp Models\Museum.cpp Models\Route.cpp Models\TravelPlan.cpp DataBase\DataLoader.cpp Controllers\Algorithms.cpp Controllers\TravelSystem.cpp Controllers\c_api.cpp"
+set "SOURCES=Models\Src\City.cpp Models\Src\Lane.cpp Models\Src\PathStep.cpp Models\Src\Tourist.cpp Models\Src\TouristDestination.cpp Models\Src\Attraction.cpp Models\Src\Museum.cpp Models\Src\Route.cpp Models\Src\TravelPlan.cpp DataBase\DataLoader.cpp Controllers\Src\Algorithms.cpp Controllers\Src\TravelSystem.cpp Controllers\Src\c_api.cpp"
 
 where g++ >nul 2>nul
 if %errorlevel%==0 (
-    g++ -std=c++17 -O2 -Wall -Wextra -shared -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -I Models -I DataBase -I Controllers ^
+    g++ -std=c++17 -O2 -Wall -Wextra -shared -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -I Models\Include -I DataBase -I Controllers\Include ^
         %SOURCES% ^
         -o Controllers\travelcore.dll
     goto :tests
@@ -17,7 +17,7 @@ if %errorlevel%==0 (
 
 where clang++ >nul 2>nul
 if %errorlevel%==0 (
-    clang++ -std=c++17 -O2 -Wall -Wextra -shared -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -I Models -I DataBase -I Controllers ^
+    clang++ -std=c++17 -O2 -Wall -Wextra -shared -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -I Models\Include -I DataBase -I Controllers\Include ^
         %SOURCES% ^
         -o Controllers\travelcore.dll
     goto :tests
@@ -47,10 +47,10 @@ echo Готово: Controllers\travelcore.dll
 if /i "%~1"=="--tests" (
     if not exist Tests\.build mkdir Tests\.build
     where g++ >nul 2>nul && (
-        g++ -std=c++17 -O2 -Wall -Wextra -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -I Models -I DataBase -I Controllers ^
+        g++ -std=c++17 -O2 -Wall -Wextra -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -I Models\Include -I DataBase -I Controllers\Include ^
             Tests\smoke_test.cpp %SOURCES% -o Tests\.build\smoke_test.exe
     ) || (
-        clang++ -std=c++17 -O2 -Wall -Wextra -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -I Models -I DataBase -I Controllers ^
+        clang++ -std=c++17 -O2 -Wall -Wextra -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -I Models\Include -I DataBase -I Controllers\Include ^
             Tests\smoke_test.cpp %SOURCES% -o Tests\.build\smoke_test.exe
     )
     if %errorlevel%==0 echo Готово: Tests\.build\smoke_test.exe

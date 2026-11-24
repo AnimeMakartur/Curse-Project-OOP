@@ -2,10 +2,10 @@
 
 #include <vector>
 
-#include "../Models/PathStep.h"
-#include "../Models/Route.h"
-#include "../Models/Tourist.h"
-#include "../Models/TouristDestination.h"
+#include "PathStep.h"
+#include "Route.h"
+#include "Tourist.h"
+#include "TouristDestination.h"
 
 namespace travel {
 namespace algorithms {

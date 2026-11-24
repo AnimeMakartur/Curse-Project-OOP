@@ -81,21 +81,12 @@ class MainWindow(QMainWindow):
         self.cities = []
         self.lastPlan = None
         self._searchText = ""
-        self._sizesApplied = False
         # Шлях до бази фіксований за кулісами; аргумент CLI може його лише перевизначити
         self.dbPath = os.path.normpath(dbPath) if dbPath else os.path.normpath(DefaultDb)
 
         self._buildUi()
         self._connectClient()
         self._autoLoadDb()
-
-    def showEvent(self, event):
-        # Фіксуємо розклад спліттера, щойно відомий реальний розмір вікна,
-        # щоб ліва панель не стискалася на старті
-        super().showEvent(event)
-        if not self._sizesApplied:
-            self._sizesApplied = True
-            self.splitter.setSizes([340, max(200, self.width() - 340)])
 
     # ---------------- побудова інтерфейсу ----------------
     def _buildUi(self):

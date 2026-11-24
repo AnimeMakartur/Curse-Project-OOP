@@ -3,9 +3,9 @@
 #include <string>
 #include <vector>
 
-#include "../Models/City.h"
-#include "../Models/Route.h"
-#include "../Models/TouristDestination.h"
+#include "City.h"
+#include "Route.h"
+#include "TouristDestination.h"
 
 namespace travel {
 

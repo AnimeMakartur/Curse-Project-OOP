@@ -11,8 +11,8 @@
 | Шар | Мова | Папка | Призначення |
 |---|---|---|---|
 | Представлення (GUI) | Python 3 + **PyQt6** | `Code/View` | Віконний інтерфейс: вибір міста, профіль туриста, каталог (QTableWidget), план по днях, метрики; консольний режим `--console` |
-| Бізнес-логіка / обчислювальне ядро | **C++17** | `Code/Controllers`, `Code/Models` | Моделі предметної області, алгоритми (лінійний пошук, сортування, Дейкстра з чергою з пріоритетом), фасад `TravelSystem` |
-| Дані та міжмовна взаємодія | JSON + C API | `Code/DataBase`, `Controllers/c_api.cpp` | Локальна база `travel_db.json` (міста + об'єкти + графи), завантажувач `DataLoader`, `extern "C"` API для ctypes |
+| Бізнес-логіка / обчислювальне ядро | **C++17** | `Code/Controllers`, `Code/Models` (підпапки `Include/` для `.h` і `Src/` для `.cpp`) | Моделі предметної області, алгоритми (лінійний пошук, сортування, Дейкстра з чергою з пріоритетом), фасад `TravelSystem` |
+| Дані та міжмовна взаємодія | JSON + C API | `Code/DataBase`, `Controllers/Src/c_api.cpp` | Локальна база `travel_db.json` (міста + об'єкти + графи), завантажувач `DataLoader`, `extern "C"` API для ctypes |
 
 Міжмовна взаємодія: Python GUI викликає методи C++ ядра через динамічну
 бібліотеку (`travelcore.dll` / `libtravelcore.so`) засобами `ctypes`
@@ -45,19 +45,21 @@
 ├── README.MD                                            # цей файл
 └── Code/
     ├── Models/                  # класи предметної області (ООП)
-    │   ├── City.*               #   місто/агломерація (id, назва, регіон, опис)
-    │   ├── Tourist.*            #   турист: targetCityId, бюджет (денний/загальний), дні, інтереси
-    │   ├── TouristDestination.* #   абстрактний базовий клас об'єкта (cityId, protected-поля)
-    │   ├── Attraction.*         #   пам'ятка (успадкування, поліморфізм)
-    │   ├── Museum.*             #   музей (успадкування, поліморфізм)
-    │   ├── Lane.*               #   смуга/лінія: тип, маршрут, k_speed, v_base, cost, waitTime
-    │   ├── Route.*              #   ребро графа: cityId, distanceKm, набір lanes, вибір найкращої лінії
-    │   ├── PathStep.*           #   крок маршруту: ребро + обрана лінія + час + вартість
-    │   └── TravelPlan.*         #   план по днях (DayItem: об'єкт + transfers), метрики, експорт
+    │   ├── Include/             #   заголовки (.h)
+    │   │   ├── City.h           #   місто/агломерація (id, назва, регіон, опис)
+    │   │   ├── Tourist.h        #   турист: targetCityId, бюджет (денний/загальний), дні, інтереси
+    │   │   ├── TouristDestination.h # абстрактний базовий клас об'єкта (cityId, protected-поля)
+    │   │   ├── Attraction.h     #   пам'ятка (успадкування, поліморфізм)
+    │   │   ├── Museum.h         #   музей (успадкування, поліморфізм)
+    │   │   ├── Lane.h           #   смуга/лінія: тип, маршрут, k_speed, v_base, cost, waitTime
+    │   │   ├── Route.h          #   ребро графа: cityId, distanceKm, набір lanes, вибір найкращої лінії
+    │   │   ├── PathStep.h       #   крок маршруту: ребро + обрана лінія + час + вартість
+    │   │   └── TravelPlan.h     #   план по днях (DayItem: об'єкт + transfers), метрики, експорт
+    │   └── Src/                 #   реалізація (.cpp тих самих класів)
     ├── Controllers/             # керуюче ядро
-    │   ├── Algorithms.*         #   лінійний пошук, сортування, Дейкстра (пріоритетна черга, вибір лінії)
-    │   ├── TravelSystem.*       #   фасад: міста, фільтрація за targetCityId, план, findShortestPath
-    │   └── c_api.cpp            #   extern "C" API для ctypes (ts_get_cities, ts_set_tourist, ts_generate_plan, ...)
+    │   ├── Include/             #   заголовки (.h): Algorithms.h, TravelSystem.h
+    │   └── Src/                 #   реалізація (.cpp): Algorithms.cpp, TravelSystem.cpp,
+    │                            #   c_api.cpp — extern "C" API для ctypes (ts_get_cities, ts_set_tourist, ts_generate_plan, ...)
     ├── DataBase/
     │   ├── JsonParser.h         #   мінімальний JSON-парсер без залежностей
     │   ├── DataLoader.*         #   читання travel_db.json: міста, каталог, графи зі смугами
@@ -99,40 +101,6 @@
 
 ## Розгортання та запуск
 
-### 1. Docker / Docker Compose — однією командою
-
-```bash
-docker compose up --build          # збірка образу + запуск GUI
-```
-
-- Linux: X11-дисплей хоста прокидається через `DISPLAY` і сокет `/tmp/.X11-unix`
-  (для Wayland задайте `WAYLAND_DISPLAY` і `XDG_RUNTIME_DIR` у `.env`).
-- Windows (WSL2 + VcXsrv/Xming): скопіюйте `.env.example` у `.env`, задайте
-  `DISPLAY=host.docker.internal:0`, запустіть VcXsrv із **«Disable access control»**,
-  потім `docker compose up --build`.
-- Headless/CI: `QT_QPA_PLATFORM=offscreen docker compose up --build`.
-- Консольний режим у контейнері: `docker compose --profile console run --build console`.
-
-### Часті проблеми Docker
-
-- `qt.qpa.xcb: could not connect to display` — контейнер не дістався до X-сервера
-  (у логу видно значення `DISPLAY`; порожнє означає, що `.env`/змінна не підхопились).
-  На Windows це нормально без `.env`: вкажіть `DISPLAY=host.docker.internal:0`
-  (VcXsrv має слухати TCP 6000 і бути запущеним із «Disable access control»).
-  На Linux перевірте `xhost` (дозвольте локальні підключення) — сокет уже прокинутий.
-  Якщо дисплей недоступний, `app.py` **автоматично** переходить у
-  `QT_QPA_PLATFORM=offscreen` із попередженням у логу (GUI тоді не видно, але застосунок
-  не падає) — перевірено юніт-перевіркою `_display_reachable()`.
-- `From 6.5.0, xcb-cursor0 or libxcb-cursor0 is needed...` — у Dockerfile встановлено
-  `libxcb-cursor0` (є self-check `ldconfig -p | grep libxcb-cursor`); якщо бачите це
-  разом із «could not connect to display» — спершу фіксніть дисплей, це вторинне
-  повідомление плагіна xcb.
-- `env: 'bash\r': No such file or directory` — CRLF у `build.sh`; уже виправлено
-  (LF + `.gitattributes` + виклик `bash build.sh` у Dockerfile).
-- Папка `Code/DataBase` змонтована як volume — зміни у `travel_db.json`
-  підхоплюються без перезбірки контейнера.
-- Консольний режим у контейнері: `docker compose --profile console run --build console`.
-
 ### 2. Локальна збірка та запуск
 
 Windows (з кореня проєкту):
@@ -164,7 +132,7 @@ REM або з демо-базою:  python app.py --console ..\Tests\sample_db.j
 
 ```bat
 cd Code\Tests
-g++ -std=c++17 -Wall -Wextra -I ..\Models -I ..\DataBase -I ..\Controllers smoke_test.cpp ..\Models\*.cpp ..\DataBase\DataLoader.cpp ..\Controllers\Algorithms.cpp ..\Controllers\TravelSystem.cpp -o smoke_test
+g++ -std=c++17 -Wall -Wextra -I ..\Models\Include -I ..\DataBase -I ..\Controllers\Include smoke_test.cpp ..\Models\Src\*.cpp ..\DataBase\DataLoader.cpp ..\Controllers\Src\Algorithms.cpp ..\Controllers\Src\TravelSystem.cpp -o smoke_test
 smoke_test sample_db.json
 REM або одразу зі скриптом збірки: Code\build.bat --tests  /  ./build.sh --tests
 ```

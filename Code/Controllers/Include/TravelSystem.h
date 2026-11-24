@@ -3,12 +3,12 @@
 #include <string>
 #include <vector>
 
-#include "../Models/City.h"
-#include "../Models/PathStep.h"
-#include "../Models/Route.h"
-#include "../Models/Tourist.h"
-#include "../Models/TouristDestination.h"
-#include "../Models/TravelPlan.h"
+#include "City.h"
+#include "PathStep.h"
+#include "Route.h"
+#include "Tourist.h"
+#include "TouristDestination.h"
+#include "TravelPlan.h"
 
 namespace travel {
 

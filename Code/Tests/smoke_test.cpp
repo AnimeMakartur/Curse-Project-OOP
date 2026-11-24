@@ -3,8 +3,8 @@
 // -> Дейкстра з вибором лінії транспорту -> план із деталізацією переходів.
 //
 // Збірка (після Code/build.bat або вручну), наприклад:
-//   clang++ -std=c++17 -Wall -Wextra -I ../Models -I ../DataBase -I ../Controllers smoke_test.cpp \
-//       ../Models/*.cpp ../DataBase/DataLoader.cpp ../Controllers/Algorithms.cpp ../Controllers/TravelSystem.cpp \
+//   clang++ -std=c++17 -Wall -Wextra -I ../Models/Include -I ../DataBase -I ../Controllers/Include smoke_test.cpp \
+//       ../Models/Src/*.cpp ../DataBase/DataLoader.cpp ../Controllers/Src/Algorithms.cpp ../Controllers/Src/TravelSystem.cpp \
 //       -o smoke_test
 // Запуск:
 //   ./smoke_test ../DataBase/travel_db.json
@@ -14,7 +14,7 @@
 #include <string>
 #include <vector>
 
-#include "../Controllers/TravelSystem.h"
+#include "TravelSystem.h"
 
 using namespace travel;
 

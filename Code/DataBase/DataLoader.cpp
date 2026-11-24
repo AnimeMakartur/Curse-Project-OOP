@@ -5,8 +5,8 @@
 #include <sstream>
 
 #include "JsonParser.h"
-#include "../Models/Attraction.h"
-#include "../Models/Museum.h"
+#include "Attraction.h"
+#include "Museum.h"
 
 namespace travel {
 

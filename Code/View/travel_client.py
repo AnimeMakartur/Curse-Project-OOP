@@ -35,7 +35,7 @@ def findLibrary(explicitPath=None):
 
 
 class TravelClient:
-    """Тонкий клієнт C API ядра TravelSystem (Controllers/c_api.cpp)."""
+    """Тонкий клієнт C API ядра TravelSystem (Controllers/Src/c_api.cpp)."""
 
     def __init__(self, libPath=None):
         self._lib = ctypes.CDLL(findLibrary(libPath))
