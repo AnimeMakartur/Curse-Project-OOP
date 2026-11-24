@@ -23,17 +23,27 @@ def runConsole(dbPath):
     with TravelClient() as client:
         client.loadData(dbPath)
         cities = client.getCities()
-        print(f"Завантажено міст: {client.citiesCount()}, "
-              f"об'єктів: {client.catalogSize()}, ребер графів: {client.routesCount()}")
+        print(
+            f"Завантажено міст: {client.citiesCount()}, "
+            f"об'єктів: {client.catalogSize()}, ребер графів: {client.routesCount()}"
+        )
         for c in cities:
-            print(f"  місто #{c['id']}: {c['name']} ({c.get('region', '')}) — {c.get('description', '')}")
+            print(
+                f"  місто #{c['id']}: {c['name']} ({c.get('region', '')}) — {c.get('description', '')}"
+            )
         if not cities:
-            print("База порожня — додайте міста, об'єкти та маршрути у travel_db.json (див. schema.md)")
+            print(
+                "База порожня — додайте міста, об'єкти та маршрути у travel_db.json (див. schema.md)"
+            )
             return 0
 
         cityId = cities[0]["id"]
         client.setTourist(
-            "Єгор", 20, True, 2, 8.0,
+            "Єгор",
+            20,
+            True,
+            2,
+            8.0,
             ["history", "architecture", "nature"],
             cityId=cityId,
         )
@@ -41,8 +51,10 @@ def runConsole(dbPath):
 
         print("\nКаталог обраного міста:")
         for d in client.getCatalog(cityId):
-            print(f"  id={d['id']} cityId={d['cityId']} [{d['type']}] {d['name']} — "
-                  f"{d['cost']} EUR, рейтинг {d['rating']}, {d['visitDuration']} год")
+            print(
+                f"  id={d['id']} cityId={d['cityId']} [{d['type']}] {d['name']} — "
+                f"{d['cost']} EUR, рейтинг {d['rating']}, {d['visitDuration']} год"
+            )
 
         print("\nРебра графа міста (смуги/лінії):")
         for r in client.getRoutes(cityId):
@@ -52,10 +64,14 @@ def runConsole(dbPath):
             )
             print(f"  {r['fromId']} -> {r['toId']}: {r['distanceKm']} км | {lanes}")
 
-        print("\nФільтр (лінійний пошук):",
-              json.dumps(client.filterDestinations(), ensure_ascii=False, indent=2))
-        print("\nСортовано за релевантністю:",
-              json.dumps(client.sortedDestinations(), ensure_ascii=False, indent=2))
+        print(
+            "\nФільтр (лінійний пошук):",
+            json.dumps(client.filterDestinations(), ensure_ascii=False, indent=2),
+        )
+        print(
+            "\nСортовано за релевантністю:",
+            json.dumps(client.sortedDestinations(), ensure_ascii=False, indent=2),
+        )
 
         filtered = client.filterDestinations()
         if len(filtered) >= 2:
@@ -65,9 +81,11 @@ def runConsole(dbPath):
             for s in path:
                 lane = s["lane"]
                 name = f" «{lane['routeName']}»" if lane.get("routeName") else ""
-                print(f"  {s['fromId']} -> {s['toId']}: {s['distanceKm']} км, "
-                      f"{s['timeHours']:.3f} год, {s['cost']} EUR — "
-                      f"{lane['transportUkr']}{name}")
+                print(
+                    f"  {s['fromId']} -> {s['toId']}: {s['distanceKm']} км, "
+                    f"{s['timeHours']:.3f} год, {s['cost']} EUR — "
+                    f"{lane['transportUkr']}{name}"
+                )
 
         plan = client.generatePlan()
         print("\n" + plan.get("summary", ""))
@@ -83,7 +101,7 @@ def _displayReachable():
     if not display:
         return False
     if display.startswith("unix:"):
-        display = display[len("unix:"):]
+        display = display[len("unix:") :]
     host, sep, num = display.rpartition(":")
     if not sep:
         return False
@@ -94,6 +112,7 @@ def _displayReachable():
     if host in ("", "unix"):
         return os.path.exists(f"/tmp/.X11-unix/X{n}")
     import socket
+
     try:
         with socket.create_connection((host, 6000 + n), timeout=1.5):
             return True
@@ -118,8 +137,8 @@ def runGui(dbPath=None):
             "Увага: X-дисплей недоступний (DISPLAY=%r, WAYLAND_DISPLAY=%r) — GUI запущено "
             "у headless-режимі QT_QPA_PLATFORM=offscreen. Для повноцінного GUI на Linux — "
             "DISPLAY=:0 (сокет /tmp/.X11-unix прокидається docker-compose); у Docker під "
-            "Windows — VcXsrv/Xming + .env DISPLAY=host.docker.internal:0." % (
-                os.environ.get("DISPLAY", ""), os.environ.get("WAYLAND_DISPLAY", ""))
+            "Windows — VcXsrv/Xming + .env DISPLAY=host.docker.internal:0."
+            % (os.environ.get("DISPLAY", ""), os.environ.get("WAYLAND_DISPLAY", ""))
         )
 
     app = QApplication(sys.argv)

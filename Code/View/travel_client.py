@@ -60,7 +60,15 @@ class TravelClient:
         lib.ts_get_cities.argtypes = [c_void_p]
         lib.ts_set_tourist.restype = None
         lib.ts_set_tourist.argtypes = [
-            c_void_p, c_int, c_char_p, c_double, c_int, c_int, c_double, c_char_p, c_int,
+            c_void_p,
+            c_int,
+            c_char_p,
+            c_double,
+            c_int,
+            c_int,
+            c_double,
+            c_char_p,
+            c_int,
         ]
         lib.ts_set_target_city.restype = None
         lib.ts_set_target_city.argtypes = [c_void_p, c_int]
@@ -105,7 +113,8 @@ class TravelClient:
         if not ok:
             err = self._lib.ts_last_error()
             raise RuntimeError(
-                "Failed to load the database: %s (%s)" % (filename, err.decode("utf-8") if err else "?")
+                "Failed to load the database: %s (%s)"
+                % (filename, err.decode("utf-8") if err else "?")
             )
         return True
 
@@ -116,8 +125,7 @@ class TravelClient:
     def citiesCount(self):
         return self._lib.ts_cities_count(self._handle)
 
-    def setTourist(self, name, budget, isTotalBudget, days, dailyTimeLimit, interests,
-                   cityId=-1):
+    def setTourist(self, name, budget, isTotalBudget, days, dailyTimeLimit, interests, cityId=-1):
         """Створити/редагувати профіль туриста (UC1, UC4, UC5) із обраним містом cityId."""
         interestsCsv = ",".join(interests)
         self._lib.ts_set_tourist(
@@ -164,14 +172,20 @@ class TravelClient:
     def findShortestPath(self, fromId, toId, budget=None):
         """Оптимальний маршрут алгоритмом Дейкстри (UC8) з деталізацією ліній транспорту."""
         if budget is None:
-            return self._takeJson(
-                self._lib.ts_find_shortest_path(self._handle, int(fromId), int(toId))
-            ) or []
-        return self._takeJson(
-            self._lib.ts_find_shortest_path_budget(
-                self._handle, int(fromId), int(toId), float(budget)
+            return (
+                self._takeJson(
+                    self._lib.ts_find_shortest_path(self._handle, int(fromId), int(toId))
+                )
+                or []
             )
-        ) or []
+        return (
+            self._takeJson(
+                self._lib.ts_find_shortest_path_budget(
+                    self._handle, int(fromId), int(toId), float(budget)
+                )
+            )
+            or []
+        )
 
     def generatePlan(self):
         """Згенерувати персоналізований туристичний план (UC2)."""

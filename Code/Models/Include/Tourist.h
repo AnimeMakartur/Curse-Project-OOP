@@ -7,20 +7,20 @@ namespace travel {
 
 // Турист (користувач): профіль з обраним містом/агломерацією, бюджетом, часом та інтересами.
 class Tourist {
-private:
+  private:
     int id;
     std::string name;
-    double inputBudget;    // введений бюджет (на день або на всю подорож)
-    bool isTotalBudget;    // true — inputBudget на всю подорож, false — на один день
+    double inputBudget; // введений бюджет (на день або на всю подорож)
+    bool isTotalBudget; // true — inputBudget на всю подорож, false — на один день
     int tripDays;          // тривалість подорожі у днях
     double dailyTimeLimit; // доступний час на один день (год)
     std::vector<std::string> interestTags;
-    int targetCityId;      // обране місто/агломерація (City::id); -1 — не обрано
+    int targetCityId; // обране місто/агломерація (City::id); -1 — не обрано
 
-public:
+  public:
     Tourist();
-    Tourist(int id, const std::string& name, double inputBudget, bool isTotalBudget,
-            int tripDays, double dailyTimeLimit, const std::vector<std::string>& interestTags,
+    Tourist(int id, const std::string& name, double inputBudget, bool isTotalBudget, int tripDays,
+            double dailyTimeLimit, const std::vector<std::string>& interestTags,
             int targetCityId = -1);
 
     // Розрахунковий денний бюджет, формула (1.7):

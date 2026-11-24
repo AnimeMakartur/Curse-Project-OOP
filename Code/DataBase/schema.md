@@ -20,58 +20,58 @@
 
 ## cities — міста / міські агломерації
 
-| Поле | Тип | Опис |
-|---|---|---|
-| `id` | int | унікальний ідентифікатор міста (ціле, унікальне в базі) |
-| `name` | string | назва міста / агломерації |
-| `region` | string | область / регіон (опціонально) |
-| `description` | string | короткий опис агломерації (опціонально) |
+| Поле          | Тип    | Опис                                                    |
+| ------------- | ------ | ------------------------------------------------------- |
+| `id`          | int    | унікальний ідентифікатор міста (ціле, унікальне в базі) |
+| `name`        | string | назва міста / агломерації                               |
+| `region`      | string | область / регіон (опціонально)                          |
+| `description` | string | короткий опис агломерації (опціонально)                 |
 
 ## destinations — каталог туристичних об'єктів
 
 Спільні поля для обох типів:
 
-| Поле | Тип | Опис |
-|---|---|---|
-| `type` | string | `"attraction"`, `"museum"` або `"hotel"` (готель — стартова точка маршруту; сприймається як `attraction` із тегом `hotel`/`accommodation`) |
-| `id` | int | унікальний ідентифікатор об'єкта (вершина графа маршрутів) |
-| `cityId` | int | id міста, якому належить об'єкт (`cities[].id`) |
-| `name` | string | назва |
-| `cost` | double | вартість вхідного квитка, EUR |
-| `rating` | double | рейтинг 0..5 |
-| `visitDuration` | double | час огляду, год |
-| `openHour` | double | година відкриття (напр. 9.0) |
-| `closeHour` | double | година закриття (напр. 18.0) |
-| `tags` | string[] | теги категорій (мають перетинатися з інтересами туриста) |
+| Поле            | Тип      | Опис                                                                                                                                       |
+| --------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `type`          | string   | `"attraction"`, `"museum"` або `"hotel"` (готель — стартова точка маршруту; сприймається як `attraction` із тегом `hotel`/`accommodation`) |
+| `id`            | int      | унікальний ідентифікатор об'єкта (вершина графа маршрутів)                                                                                 |
+| `cityId`        | int      | id міста, якому належить об'єкт (`cities[].id`)                                                                                            |
+| `name`          | string   | назва                                                                                                                                      |
+| `cost`          | double   | вартість вхідного квитка, EUR                                                                                                              |
+| `rating`        | double   | рейтинг 0..5                                                                                                                               |
+| `visitDuration` | double   | час огляду, год                                                                                                                            |
+| `openHour`      | double   | година відкриття (напр. 9.0)                                                                                                               |
+| `closeHour`     | double   | година закриття (напр. 18.0)                                                                                                               |
+| `tags`          | string[] | теги категорій (мають перетинатися з інтересами туриста)                                                                                   |
 
 Додаткові поля для `"attraction"`:
 
-| Поле | Тип | Опис |
-|---|---|---|
-| `isOutdoor` | bool | відкрита пам'ятка чи ні |
-| `architecturalStyle` | string | архітектурний стиль |
-| `isSeasonal` | bool | сезонний об'єкт чи ні |
+| Поле                 | Тип    | Опис                    |
+| -------------------- | ------ | ----------------------- |
+| `isOutdoor`          | bool   | відкрита пам'ятка чи ні |
+| `architecturalStyle` | string | архітектурний стиль     |
+| `isSeasonal`         | bool   | сезонний об'єкт чи ні   |
 
 Додаткові поля для `"museum"`:
 
-| Поле | Тип | Опис |
-|---|---|---|
-| `exhibitsCount` | int | кількість експонатів |
-| `hasAudioGuide` | bool | наявність аудіогіда |
-| `expositionTheme` | string | тема експозиції |
+| Поле              | Тип    | Опис                 |
+| ----------------- | ------ | -------------------- |
+| `exhibitsCount`   | int    | кількість експонатів |
+| `hasAudioGuide`   | bool   | наявність аудіогіда  |
+| `expositionTheme` | string | тема експозиції      |
 
 ## routes — ребра мультимодального транспортного графа міста
 
 Кожне ребро `(fromId, toId)` — ділянка дороги довжиною `distanceKm` у межах
 одного міста (`cityId`) з набором доступних смуг/ліній `lanes`.
 
-| Поле | Тип | Опис |
-|---|---|---|
-| `cityId` | int | id міста, якому належить ділянка дороги |
-| `fromId` | int | id початкової вершини (об'єкта) |
-| `toId` | int | id кінцевої вершини (об'єкта) |
-| `distanceKm` | double | довжина ділянки, км |
-| `lanes` | array | доступні смуги/лінії: рядки або об'єкти (див. нижче) |
+| Поле         | Тип    | Опис                                                 |
+| ------------ | ------ | ---------------------------------------------------- |
+| `cityId`     | int    | id міста, якому належить ділянка дороги              |
+| `fromId`     | int    | id початкової вершини (об'єкта)                      |
+| `toId`       | int    | id кінцевої вершини (об'єкта)                        |
+| `distanceKm` | double | довжина ділянки, км                                  |
+| `lanes`      | array  | доступні смуги/лінії: рядки або об'єкти (див. нижче) |
 
 ### lanes — смуги руху та лінії громадського транспорту
 
@@ -88,14 +88,14 @@
 
 **Об'єкт** — повна форма з перевизначенням параметрів:
 
-| Поле | Тип | Опис |
-|---|---|---|
-| `type` | string | один із типів вище (обов'язкове) |
-| `routeName` | string | назва/номер маршруту, опціонально (напр. `"Tram 8"`, `"Metrobus M1"`) |
+| Поле              | Тип    | Опис                                                                  |
+| ----------------- | ------ | --------------------------------------------------------------------- |
+| `type`            | string | один із типів вище (обов'язкове)                                      |
+| `routeName`       | string | назва/номер маршруту, опціонально (напр. `"Tram 8"`, `"Metrobus M1"`) |
 | `speedMultiplier` | double | коефіцієнт приросту швидкості `k_speed` (за замовчуванням — для типу) |
-| `baseSpeedKmh` | double | базова швидкість `v_base`, км/год |
-| `cost` | double | вартість проїзду, EUR |
-| `waitTimeHours` | double | середній час очікування транспорту, год |
+| `baseSpeedKmh`    | double | базова швидкість `v_base`, км/год                                     |
+| `cost`            | double | вартість проїзду, EUR                                                 |
+| `waitTimeHours`   | double | середній час очікування транспорту, год                               |
 
 Час переміщення смугою/лінією `l` на ребрі довжиною `d`:
 
@@ -115,10 +115,18 @@ t(u,v) = min over l in lanes, cost(l) <= budget:  d / (v_base·k_speed(l)) + t_w
 ```json
 {
   "cities": [
-    { "id": 1, "name": "Lviv", "region": "Lviv Oblast",
-      "description": "Compact old town with a tram network" },
-    { "id": 2, "name": "Kyiv", "region": "Kyiv Oblast",
-      "description": "Megacity with a metrobus (BRT) and suburban trains" }
+    {
+      "id": 1,
+      "name": "Lviv",
+      "region": "Lviv Oblast",
+      "description": "Compact old town with a tram network"
+    },
+    {
+      "id": 2,
+      "name": "Kyiv",
+      "region": "Kyiv Oblast",
+      "description": "Megacity with a metrobus (BRT) and suburban trains"
+    }
   ],
   "destinations": [
     {
@@ -167,8 +175,14 @@ t(u,v) = min over l in lanes, cost(l) <= budget:  d / (v_base·k_speed(l)) + t_w
       "distanceKm": 1.2,
       "lanes": [
         { "type": "bus_lane", "routeName": "Bus 29", "cost": 0.3, "waitTimeHours": 0.15 },
-        { "type": "tram_line", "routeName": "Tram 8", "speedMultiplier": 1.6,
-          "baseSpeedKmh": 35, "cost": 0.3, "waitTimeHours": 0.12 },
+        {
+          "type": "tram_line",
+          "routeName": "Tram 8",
+          "speedMultiplier": 1.6,
+          "baseSpeedKmh": 35,
+          "cost": 0.3,
+          "waitTimeHours": 0.12
+        },
         "sidewalk"
       ]
     },
@@ -178,8 +192,14 @@ t(u,v) = min over l in lanes, cost(l) <= budget:  d / (v_base·k_speed(l)) + t_w
       "toId": 4,
       "distanceKm": 12.0,
       "lanes": [
-        { "type": "railway", "routeName": "City railway S1", "baseSpeedKmh": 90,
-          "speedMultiplier": 1.6, "cost": 0.9, "waitTimeHours": 0.3 },
+        {
+          "type": "railway",
+          "routeName": "City railway S1",
+          "baseSpeedKmh": 90,
+          "speedMultiplier": 1.6,
+          "cost": 0.9,
+          "waitTimeHours": 0.3
+        },
         { "type": "suburban_rail", "routeName": "Suburban train 801", "cost": 0.6 },
         "car_lane"
       ]

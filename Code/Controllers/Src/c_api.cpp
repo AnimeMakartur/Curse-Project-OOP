@@ -8,17 +8,17 @@
 #include <string>
 #include <vector>
 
-#include "TravelSystem.h"
 #include "City.h"
 #include "PathStep.h"
 #include "Tourist.h"
 #include "TouristDestination.h"
 #include "TravelPlan.h"
+#include "TravelSystem.h"
 
 #if defined(_WIN32)
-  #define TRAVEL_API extern "C" __declspec(dllexport)
+#define TRAVEL_API extern "C" __declspec(dllexport)
 #else
-  #define TRAVEL_API extern "C" __attribute__((visibility("default")))
+#define TRAVEL_API extern "C" __attribute__((visibility("default")))
 #endif
 
 using namespace travel;
@@ -32,19 +32,29 @@ std::string escapeJson(const std::string& s) {
     out.reserve(s.size() + 2);
     for (char c : s) {
         switch (c) {
-            case '"': out += "\\\""; break;
-            case '\\': out += "\\\\"; break;
-            case '\n': out += "\\n"; break;
-            case '\r': out += "\\r"; break;
-            case '\t': out += "\\t"; break;
-            default:
-                if (static_cast<unsigned char>(c) < 0x20) {
-                    char buf[8];
-                    std::snprintf(buf, sizeof(buf), "\\u%04x", c);
-                    out += buf;
-                } else {
-                    out += c; // UTF-8 іде як є
-                }
+        case '"':
+            out += "\\\"";
+            break;
+        case '\\':
+            out += "\\\\";
+            break;
+        case '\n':
+            out += "\\n";
+            break;
+        case '\r':
+            out += "\\r";
+            break;
+        case '\t':
+            out += "\\t";
+            break;
+        default:
+            if (static_cast<unsigned char>(c) < 0x20) {
+                char buf[8];
+                std::snprintf(buf, sizeof(buf), "\\u%04x", c);
+                out += buf;
+            } else {
+                out += c; // UTF-8 іде як є
+            }
         }
     }
     return out;
@@ -62,7 +72,8 @@ std::string num(double v) {
 std::string tagsToJson(const std::vector<std::string>& tags) {
     std::string out = "[";
     for (size_t i = 0; i < tags.size(); ++i) {
-        if (i) out += ",";
+        if (i)
+            out += ",";
         out += q(tags[i]);
     }
     out += "]";
@@ -79,10 +90,8 @@ std::string laneToJson(const Lane& lane) {
         << ",\"speedMultiplier\":" << num(lane.speedMultiplier)
         << ",\"baseSpeedKmh\":" << num(lane.baseSpeedKmh)
         << ",\"effectiveSpeedKmh\":" << num(lane.effectiveSpeedKmh())
-        << ",\"cost\":" << num(lane.cost)
-        << ",\"waitTimeHours\":" << num(lane.waitTimeHours)
-        << ",\"description\":" << q(lane.describe())
-        << "}";
+        << ",\"cost\":" << num(lane.cost) << ",\"waitTimeHours\":" << num(lane.waitTimeHours)
+        << ",\"description\":" << q(lane.describe()) << "}";
     return out.str();
 }
 
@@ -90,7 +99,8 @@ std::string lanesToJson(const Route& route) {
     std::string out = "[";
     const auto& lanes = route.getLanes();
     for (size_t i = 0; i < lanes.size(); ++i) {
-        if (i) out += ",";
+        if (i)
+            out += ",";
         out += laneToJson(lanes[i]);
     }
     out += "]";
@@ -100,36 +110,27 @@ std::string lanesToJson(const Route& route) {
 std::string routeToJson(const Route& r) {
     std::ostringstream out;
     out << "{"
-        << "\"cityId\":" << r.getCityId()
-        << ",\"fromId\":" << r.getFromId()
-        << ",\"toId\":" << r.getToId()
-        << ",\"distanceKm\":" << num(r.getDistance())
-        << ",\"lanes\":" << lanesToJson(r)
-        << "}";
+        << "\"cityId\":" << r.getCityId() << ",\"fromId\":" << r.getFromId()
+        << ",\"toId\":" << r.getToId() << ",\"distanceKm\":" << num(r.getDistance())
+        << ",\"lanes\":" << lanesToJson(r) << "}";
     return out.str();
 }
 
 std::string pathStepToJson(const PathStep& s) {
     std::ostringstream out;
     out << "{"
-        << "\"cityId\":" << s.route.getCityId()
-        << ",\"fromId\":" << s.route.getFromId()
-        << ",\"toId\":" << s.route.getToId()
-        << ",\"distanceKm\":" << num(s.route.getDistance())
-        << ",\"lane\":" << laneToJson(s.lane)
-        << ",\"timeHours\":" << num(s.timeHours)
-        << ",\"cost\":" << num(s.cost)
-        << "}";
+        << "\"cityId\":" << s.route.getCityId() << ",\"fromId\":" << s.route.getFromId()
+        << ",\"toId\":" << s.route.getToId() << ",\"distanceKm\":" << num(s.route.getDistance())
+        << ",\"lane\":" << laneToJson(s.lane) << ",\"timeHours\":" << num(s.timeHours)
+        << ",\"cost\":" << num(s.cost) << "}";
     return out.str();
 }
 
 std::string cityToJson(const City& c) {
     std::ostringstream out;
     out << "{"
-        << "\"id\":" << c.getId()
-        << ",\"name\":" << q(c.getName())
-        << ",\"region\":" << q(c.getRegion())
-        << ",\"description\":" << q(c.getDescription())
+        << "\"id\":" << c.getId() << ",\"name\":" << q(c.getName())
+        << ",\"region\":" << q(c.getRegion()) << ",\"description\":" << q(c.getDescription())
         << "}";
     return out.str();
 }
@@ -137,26 +138,21 @@ std::string cityToJson(const City& c) {
 std::string destinationToJson(const TouristDestination* d) {
     std::ostringstream out;
     out << "{"
-        << "\"id\":" << d->getId()
-        << ",\"cityId\":" << d->getCityId()
-        << ",\"type\":" << q(d->getType())
-        << ",\"name\":" << q(d->getName())
-        << ",\"cost\":" << num(d->getCost())
-        << ",\"rating\":" << num(d->getRating())
+        << "\"id\":" << d->getId() << ",\"cityId\":" << d->getCityId()
+        << ",\"type\":" << q(d->getType()) << ",\"name\":" << q(d->getName())
+        << ",\"cost\":" << num(d->getCost()) << ",\"rating\":" << num(d->getRating())
         << ",\"visitDuration\":" << num(d->getVisitDuration())
-        << ",\"openHour\":" << num(d->getOpenHour())
-        << ",\"closeHour\":" << num(d->getCloseHour())
-        << ",\"tags\":" << tagsToJson(d->getTags())
-        << ",\"relevance\":" << num(d->getRelevance())
-        << ",\"details\":" << q(d->getDetails())
-        << "}";
+        << ",\"openHour\":" << num(d->getOpenHour()) << ",\"closeHour\":" << num(d->getCloseHour())
+        << ",\"tags\":" << tagsToJson(d->getTags()) << ",\"relevance\":" << num(d->getRelevance())
+        << ",\"details\":" << q(d->getDetails()) << "}";
     return out.str();
 }
 
 std::string destinationsToJson(const std::vector<TouristDestination*>& list) {
     std::string out = "[";
     for (size_t i = 0; i < list.size(); ++i) {
-        if (i) out += ",";
+        if (i)
+            out += ",";
         out += destinationToJson(list[i]);
     }
     out += "]";
@@ -166,7 +162,8 @@ std::string destinationsToJson(const std::vector<TouristDestination*>& list) {
 std::string pathToJson(const std::vector<PathStep>& path) {
     std::string out = "[";
     for (size_t i = 0; i < path.size(); ++i) {
-        if (i) out += ",";
+        if (i)
+            out += ",";
         out += pathStepToJson(path[i]);
     }
     out += "]";
@@ -197,13 +194,9 @@ TravelSystem* asSystem(void* handle) { return static_cast<TravelSystem*>(handle)
 
 } // namespace
 
-TRAVEL_API void* ts_create() {
-    return new TravelSystem();
-}
+TRAVEL_API void* ts_create() { return new TravelSystem(); }
 
-TRAVEL_API void ts_destroy(void* handle) {
-    delete asSystem(handle);
-}
+TRAVEL_API void ts_destroy(void* handle) { delete asSystem(handle); }
 
 TRAVEL_API int ts_load_data(void* handle, const char* filename) {
     if (!handle || !filename) {
@@ -216,51 +209,53 @@ TRAVEL_API int ts_load_data(void* handle, const char* filename) {
     return ok ? 1 : 0;
 }
 
-TRAVEL_API const char* ts_last_error() {
-    return g_lastError.c_str();
-}
+TRAVEL_API const char* ts_last_error() { return g_lastError.c_str(); }
 
 TRAVEL_API int ts_cities_count(void* handle) {
     return handle ? static_cast<int>(asSystem(handle)->getCitiesCount()) : 0;
 }
 
 TRAVEL_API char* ts_get_cities(void* handle) {
-    if (!handle) return toCString("[]");
+    if (!handle)
+        return toCString("[]");
     const std::vector<City>& cities = asSystem(handle)->getCities();
     std::string out = "[";
     for (size_t i = 0; i < cities.size(); ++i) {
-        if (i) out += ",";
+        if (i)
+            out += ",";
         out += cityToJson(cities[i]);
     }
     out += "]";
     return toCString(out);
 }
 
-TRAVEL_API void ts_set_tourist(void* handle, int id, const char* name,
-                               double budget, int isTotalBudget, int days,
-                               double dailyTimeLimit, const char* interestsCsv,
-                               int targetCityId) {
-    if (!handle) return;
-    std::vector<std::string> tags = interestsCsv ? splitCsv(interestsCsv) : std::vector<std::string>();
-    Tourist tourist(id, name ? name : "", budget, isTotalBudget != 0, days,
-                    dailyTimeLimit, tags, targetCityId);
+TRAVEL_API void ts_set_tourist(void* handle, int id, const char* name, double budget,
+                               int isTotalBudget, int days, double dailyTimeLimit,
+                               const char* interestsCsv, int targetCityId) {
+    if (!handle)
+        return;
+    std::vector<std::string> tags =
+        interestsCsv ? splitCsv(interestsCsv) : std::vector<std::string>();
+    Tourist tourist(id, name ? name : "", budget, isTotalBudget != 0, days, dailyTimeLimit, tags,
+                    targetCityId);
     asSystem(handle)->setTouristProfile(tourist);
 }
 
 TRAVEL_API void ts_set_target_city(void* handle, int cityId) {
-    if (!handle || !asSystem(handle)->hasProfile()) return;
+    if (!handle || !asSystem(handle)->hasProfile())
+        return;
     Tourist t = asSystem(handle)->getTourist();
     t.setTargetCityId(cityId);
     asSystem(handle)->setTouristProfile(t);
 }
 
 TRAVEL_API char* ts_get_profile(void* handle) {
-    if (!handle) return toCString("{}");
+    if (!handle)
+        return toCString("{}");
     const Tourist& t = asSystem(handle)->getTourist();
     std::ostringstream out;
     out << "{"
-        << "\"id\":" << t.getId()
-        << ",\"name\":" << q(t.getName())
+        << "\"id\":" << t.getId() << ",\"name\":" << q(t.getName())
         << ",\"inputBudget\":" << num(t.getInputBudget())
         << ",\"isTotalBudget\":" << (t.getIsTotalBudget() ? "true" : "false")
         << ",\"tripDays\":" << t.getTripDays()
@@ -268,8 +263,7 @@ TRAVEL_API char* ts_get_profile(void* handle) {
         << ",\"dailyBudget\":" << num(t.getDailyBudget())
         << ",\"totalBudget\":" << num(t.getTotalBudget())
         << ",\"targetCityId\":" << t.getTargetCityId()
-        << ",\"interests\":" << tagsToJson(t.getInterests())
-        << "}";
+        << ",\"interests\":" << tagsToJson(t.getInterests()) << "}";
     return toCString(out.str());
 }
 
@@ -283,17 +277,20 @@ TRAVEL_API int ts_routes_count(void* handle) {
 
 // Повний каталог об'єктів міста (cityId < 0 — усі міста); для GUI-таблиці каталогу.
 TRAVEL_API char* ts_catalog(void* handle, int cityId) {
-    if (!handle) return toCString("[]");
+    if (!handle)
+        return toCString("[]");
     return toCString(destinationsToJson(asSystem(handle)->getCatalog(cityId)));
 }
 
 TRAVEL_API char* ts_filter_destinations(void* handle) {
-    if (!handle) return toCString("[]");
+    if (!handle)
+        return toCString("[]");
     return toCString(destinationsToJson(asSystem(handle)->filterDestinations()));
 }
 
 TRAVEL_API char* ts_sorted_destinations(void* handle) {
-    if (!handle) return toCString("[]");
+    if (!handle)
+        return toCString("[]");
     TravelSystem* sys = asSystem(handle);
     std::vector<TouristDestination*> list = sys->filterDestinations();
     sys->sortDestinations(list);
@@ -302,11 +299,13 @@ TRAVEL_API char* ts_sorted_destinations(void* handle) {
 
 // усі ребра графа міста (cityId < 0 — усі міста) зі списком смуг/ліній
 TRAVEL_API char* ts_get_routes(void* handle, int cityId) {
-    if (!handle) return toCString("[]");
+    if (!handle)
+        return toCString("[]");
     const std::vector<Route> routes = asSystem(handle)->getRoutes(cityId);
     std::string out = "[";
     for (size_t i = 0; i < routes.size(); ++i) {
-        if (i) out += ",";
+        if (i)
+            out += ",";
         out += routeToJson(routes[i]);
     }
     out += "]";
@@ -314,19 +313,22 @@ TRAVEL_API char* ts_get_routes(void* handle, int cityId) {
 }
 
 TRAVEL_API char* ts_find_shortest_path(void* handle, int fromId, int toId) {
-    if (!handle) return toCString("[]");
+    if (!handle)
+        return toCString("[]");
     return toCString(pathToJson(asSystem(handle)->findShortestPath(fromId, toId)));
 }
 
 // Дейкстра із явним залишком бюджету (визначає, які лінії транспорту доступні).
 TRAVEL_API char* ts_find_shortest_path_budget(void* handle, int fromId, int toId, double budget) {
-    if (!handle) return toCString("[]");
+    if (!handle)
+        return toCString("[]");
     TravelSystem* sys = asSystem(handle);
     return toCString(pathToJson(sys->findShortestPath(fromId, toId, sys->activeCityId(), budget)));
 }
 
 TRAVEL_API char* ts_generate_plan(void* handle) {
-    if (!handle) return toCString("{}");
+    if (!handle)
+        return toCString("{}");
     TravelPlan plan = asSystem(handle)->generatePersonalizedPlan();
 
     std::ostringstream out;
@@ -336,16 +338,19 @@ TRAVEL_API char* ts_generate_plan(void* handle) {
     out << ",\"days\":[";
     const auto& days = plan.getDays();
     for (size_t d = 0; d < days.size(); ++d) {
-        if (d) out << ",";
+        if (d)
+            out << ",";
         out << "{\"day\":" << (d + 1) << ",\"items\":[";
         for (size_t i = 0; i < days[d].size(); ++i) {
-            if (i) out << ",";
+            if (i)
+                out << ",";
             const DayItem& item = days[d][i];
             out << "{\"destination\":";
             out << (item.destination ? destinationToJson(item.destination) : std::string("null"));
             out << ",\"transfers\":[";
             for (size_t t = 0; t < item.transfers.size(); ++t) {
-                if (t) out << ",";
+                if (t)
+                    out << ",";
                 out << pathStepToJson(item.transfers[t]);
             }
             out << "]}";
@@ -362,6 +367,4 @@ TRAVEL_API char* ts_generate_plan(void* handle) {
     return toCString(out.str());
 }
 
-TRAVEL_API void ts_free_string(char* str) {
-    delete[] str;
-}
+TRAVEL_API void ts_free_string(char* str) { delete[] str; }

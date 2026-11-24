@@ -9,18 +9,16 @@
 namespace travel {
 namespace algorithms {
 
-std::vector<TouristDestination*> linearFilter(
-    const std::vector<TouristDestination*>& catalog,
-    const Tourist& tourist,
-    double currentHour,
-    double remainingBudget,
-    double remainingTime) {
+std::vector<TouristDestination*> linearFilter(const std::vector<TouristDestination*>& catalog,
+                                              const Tourist& tourist, double currentHour,
+                                              double remainingBudget, double remainingTime) {
     std::vector<TouristDestination*> result;
     std::vector<std::string> interests = tourist.getInterests();
 
     // Послідовний перегляд кожного елемента каталогу — лінійний пошук O(n)
     for (TouristDestination* dest : catalog) {
-        if (!dest) continue;
+        if (!dest)
+            continue;
 
         // I(c_i <= B_rem) — вартість вписується у залишок бюджету
         bool budgetOk = dest->getCost() <= remainingBudget;
@@ -54,7 +52,8 @@ void sortByRelevance(std::vector<TouristDestination*>& list) {
 std::vector<PathStep> dijkstra(const std::vector<Route>& routes, int startId, int endId,
                                double remainingBudget) {
     std::vector<PathStep> emptyPath;
-    if (startId == endId) return emptyPath;
+    if (startId == endId)
+        return emptyPath;
 
     // Список суміжності: вершина -> (сусід, індекс ребра)
     std::map<int, std::vector<std::pair<int, size_t>>> adjacency;
@@ -67,7 +66,8 @@ std::vector<PathStep> dijkstra(const std::vector<Route>& routes, int startId, in
     std::map<int, double> dist;
     std::map<int, int> prevVertex;
     std::map<int, PathStep> prevStep;
-    for (const auto& entry : adjacency) dist[entry.first] = INF;
+    for (const auto& entry : adjacency)
+        dist[entry.first] = INF;
     dist[startId] = 0.0;
 
     // Черга з пріоритетом (min-heap) за поточною оцінкою d[v]
@@ -78,15 +78,19 @@ std::vector<PathStep> dijkstra(const std::vector<Route>& routes, int startId, in
     while (!queue.empty()) {
         auto [currentDist, u] = queue.top();
         queue.pop();
-        if (currentDist > dist[u]) continue; // застарілий запис у черзі
-        if (u == endId) break;
+        if (currentDist > dist[u])
+            continue; // застарілий запис у черзі
+        if (u == endId)
+            break;
 
         auto it = adjacency.find(u);
-        if (it == adjacency.end()) continue;
+        if (it == adjacency.end())
+            continue;
         for (const auto& [v, edgeIndex] : it->second) {
             const Route& route = routes[edgeIndex];
             // Пропускаємо ребро, якщо жодна його смуга/лінія не вписується в бюджет
-            if (!route.hasAffordableLane(remainingBudget)) continue;
+            if (!route.hasAffordableLane(remainingBudget))
+                continue;
             // Автоматичний вибір оптимальної лінії/смуги з мінімальним часом переходу
             PathStep step(route, route.chooseBestLane(remainingBudget));
             double w = step.timeHours; // вага ребра — мінімальний час переміщення

@@ -4,14 +4,13 @@
 #include <fstream>
 #include <sstream>
 
-#include "JsonParser.h"
 #include "Attraction.h"
+#include "JsonParser.h"
 #include "Museum.h"
 
 namespace travel {
 
 namespace {
-
 // Одна смуга/лінія у JSON: або рядок ("tram_line"), або об'єкт
 // {"type": "tram_line", "routeName": "Трамвай №8", "speedMultiplier": 1.6,
 //  "baseSpeedKmh": 35, "cost": 15, "waitTimeHours": 0.12}.
@@ -19,10 +18,12 @@ namespace {
 Lane parseLane(const JsonValue& item) {
     if (item.isString()) {
         LaneType type;
-        if (laneTypeFromString(item.asString(), type)) return Lane(type);
+        if (laneTypeFromString(item.asString(), type))
+            return Lane(type);
         return Lane(LaneType::Sidewalk);
     }
-    if (!item.isObject()) return Lane(LaneType::Sidewalk);
+    if (!item.isObject())
+        return Lane(LaneType::Sidewalk);
 
     LaneType type = LaneType::Sidewalk;
     laneTypeFromString(item.getString("type", "sidewalk"), type);
@@ -33,13 +34,9 @@ Lane parseLane(const JsonValue& item) {
     lane.waitTimeHours = item.getNumber("waitTimeHours", lane.waitTimeHours);
     return lane;
 }
-
 } // namespace
-
-bool DataLoader::load(const std::string& filename,
-                      std::vector<City>& cities,
-                      std::vector<TouristDestination*>& catalog,
-                      std::vector<Route>& routes,
+bool DataLoader::load(const std::string& filename, std::vector<City>& cities,
+                      std::vector<TouristDestination*>& catalog, std::vector<Route>& routes,
                       std::string& error) {
     clearCatalog(catalog);
     routes.clear();
@@ -72,20 +69,18 @@ bool DataLoader::load(const std::string& filename,
     const JsonValue& cityItems = root.at("cities");
     if (cityItems.isArray()) {
         for (const JsonValue& item : cityItems.asArray()) {
-            if (!item.isObject()) continue;
-            cities.emplace_back(
-                item.getInt("id"),
-                item.getString("name"),
-                item.getString("region", ""),
-                item.getString("description", ""));
+            if (!item.isObject())
+                continue;
+            cities.emplace_back(item.getInt("id"), item.getString("name"),
+                                item.getString("region", ""), item.getString("description", ""));
         }
     }
-
     // --- каталог туристичних об'єктів (з прив'язкою до міста cityId) ---
     const JsonValue& destinations = root.at("destinations");
     if (destinations.isArray()) {
         for (const JsonValue& item : destinations.asArray()) {
-            if (!item.isObject()) continue;
+            if (!item.isObject())
+                continue;
             std::string type = item.getString("type", "attraction");
             int id = item.getInt("id");
             int cityId = item.getInt("cityId", 0);
@@ -98,26 +93,24 @@ bool DataLoader::load(const std::string& filename,
             std::vector<std::string> tags = item.getStringArray("tags");
 
             if (type == "museum") {
-                catalog.push_back(new Museum(
-                    id, cityId, name, cost, rating, visitDuration, openHour, closeHour, tags,
-                    item.getInt("exhibitsCount"),
-                    item.getBool("hasAudioGuide"),
-                    item.getString("expositionTheme")));
+                catalog.push_back(
+                    new Museum(id, cityId, name, cost, rating, visitDuration, openHour, closeHour,
+                               tags, item.getInt("exhibitsCount"), item.getBool("hasAudioGuide"),
+                               item.getString("expositionTheme")));
             } else {
                 catalog.push_back(new Attraction(
                     id, cityId, name, cost, rating, visitDuration, openHour, closeHour, tags,
-                    item.getBool("isOutdoor"),
-                    item.getString("architecturalStyle"),
+                    item.getBool("isOutdoor"), item.getString("architecturalStyle"),
                     item.getBool("isSeasonal")));
             }
         }
     }
-
     // --- ребра графів маршрутів міст (з cityId та набором смуг lanes) ---
     const JsonValue& routeItems = root.at("routes");
     if (routeItems.isArray()) {
         for (const JsonValue& item : routeItems.asArray()) {
-            if (!item.isObject()) continue;
+            if (!item.isObject())
+                continue;
             std::vector<Lane> lanes;
             const JsonValue& lanesJson = item.at("lanes");
             if (lanesJson.isArray()) {
@@ -125,12 +118,8 @@ bool DataLoader::load(const std::string& filename,
                     lanes.push_back(parseLane(lane));
                 }
             }
-            routes.emplace_back(
-                item.getInt("cityId", 0),
-                item.getInt("fromId"),
-                item.getInt("toId"),
-                item.getNumber("distanceKm"),
-                lanes);
+            routes.emplace_back(item.getInt("cityId", 0), item.getInt("fromId"),
+                                item.getInt("toId"), item.getNumber("distanceKm"), lanes);
         }
     }
 
@@ -138,8 +127,8 @@ bool DataLoader::load(const std::string& filename,
 }
 
 void DataLoader::clearCatalog(std::vector<TouristDestination*>& catalog) {
-    for (TouristDestination* dest : catalog) delete dest;
+    for (TouristDestination* dest : catalog)
+        delete dest;
     catalog.clear();
 }
-
 } // namespace travel

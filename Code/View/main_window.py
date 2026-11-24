@@ -6,14 +6,55 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import *
 from travel_client import TravelClient
 
-DefaultDb = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "DataBase", "travel_db.json"))
+DefaultDb = os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "DataBase", "travel_db.json")
+)
 
 # Теги інтересів: (категорія, [(ключ_для_ядра, підпис_UI), ...])
 InterestCategories = [
-    ("Thematic interests", [("history","History"),("architecture","Architecture"),("art","Art"),("science_tech","Science and Technology"),("nature","Nature"),("religion","Religion and Temples"),("entertainment","Entertainment"),("gastronomy","Gastronomy"),("shopping","Shopping"),("panoramic","Panoramas")]),
-    ("Space and location format", [("outdoor","Outdoor"),("indoor","Indoor"),("scenic_route","Scenic pedestrian routes")]),
-    ("Pace and duration", [("quick_visit","Quick visit (15–45 min)"),("deep_dive","Deep dive (1.5–3+ h)"),("relaxing","Relaxing"),("active","Active leisure")]),
-    ("Budget and audience", [("free_entry","Free entry"),("budget_friendly","Budget friendly"),("premium","Premium / Exclusive"),("family_friendly","Family friendly"),("nightlife","Nightlife"),("accessible","Accessible")]),
+    (
+        "Thematic interests",
+        [
+            ("history", "History"),
+            ("architecture", "Architecture"),
+            ("art", "Art"),
+            ("science_tech", "Science and Technology"),
+            ("nature", "Nature"),
+            ("religion", "Religion and Temples"),
+            ("entertainment", "Entertainment"),
+            ("gastronomy", "Gastronomy"),
+            ("shopping", "Shopping"),
+            ("panoramic", "Panoramas"),
+        ],
+    ),
+    (
+        "Space and location format",
+        [
+            ("outdoor", "Outdoor"),
+            ("indoor", "Indoor"),
+            ("scenic_route", "Scenic pedestrian routes"),
+        ],
+    ),
+    (
+        "Pace and duration",
+        [
+            ("quick_visit", "Quick visit (15–45 min)"),
+            ("deep_dive", "Deep dive (1.5–3+ h)"),
+            ("relaxing", "Relaxing"),
+            ("active", "Active leisure"),
+        ],
+    ),
+    (
+        "Budget and audience",
+        [
+            ("free_entry", "Free entry"),
+            ("budget_friendly", "Budget friendly"),
+            ("premium", "Premium / Exclusive"),
+            ("family_friendly", "Family friendly"),
+            ("nightlife", "Nightlife"),
+            ("accessible", "Accessible"),
+        ],
+    ),
 ]
 AllInterestKeys = [k for _, items in InterestCategories for k, _ in items]
 DefaultInterests = {"history", "architecture"}
@@ -26,9 +67,11 @@ SortColumnMap = {2: 2, 3: 2, 4: 3}
 SortAscending = {2: True, 3: False, 4: False}
 PlanColumns = ["Step", "Time, h", "Cost, EUR", "Details"]
 PathColumns = ["Transfer", "Distance, km", "Time, h", "Cost, EUR", "Chosen transport / line"]
-TagChipStyle = ("QPushButton { border: 1px solid #b8b8b8; border-radius: 10px; padding: 3px 10px; background: #f4f4f4; }"
+TagChipStyle = (
+    "QPushButton { border: 1px solid #b8b8b8; border-radius: 10px; padding: 3px 10px; background: #f4f4f4; }"
     "QPushButton:hover { border-color: #2d6cdf; }"
-    "QPushButton:checked { background: #2d6cdf; color: #ffffff; border-color: #2d6cdf; }")
+    "QPushButton:checked { background: #2d6cdf; color: #ffffff; border-color: #2d6cdf; }"
+)
 
 
 def _item(value, text=None, numeric=False):
@@ -62,30 +105,41 @@ class MainWindow(QMainWindow):
     # ---------- хелпери UI ----------
     @staticmethod
     def _spin(cls, mn, mx, val, suffix=""):
-        s = cls(); s.setRange(mn, mx); s.setValue(val)
-        if suffix: s.setSuffix(suffix)
+        s = cls()
+        s.setRange(mn, mx)
+        s.setValue(val)
+        if suffix:
+            s.setSuffix(suffix)
         return s
 
     @staticmethod
     def _btn(text, slot):
-        b = QPushButton(text); b.clicked.connect(slot); return b
+        b = QPushButton(text)
+        b.clicked.connect(slot)
+        return b
 
     @staticmethod
     def _combo(items, slot=None):
-        c = QComboBox(); c.addItems(items)
-        if slot: c.currentIndexChanged.connect(slot)
+        c = QComboBox()
+        c.addItems(items)
+        if slot:
+            c.currentIndexChanged.connect(slot)
         return c
 
     @staticmethod
     def _label(text="", wrap=False, gray=False):
         l = QLabel(text)
-        if wrap: l.setWordWrap(True)
-        if gray: l.setStyleSheet("color: gray;")
+        if wrap:
+            l.setWordWrap(True)
+        if gray:
+            l.setStyleSheet("color: gray;")
         return l
 
     @staticmethod
     def _group(title, layout_cls=QVBoxLayout):
-        g = QGroupBox(title); layout_cls(g); return g
+        g = QGroupBox(title)
+        layout_cls(g)
+        return g
 
     def _buildUi(self):
         self.stack = QStackedWidget(self)
@@ -95,116 +149,184 @@ class MainWindow(QMainWindow):
         self.stack.setCurrentIndex(0)
 
     def _buildProfilePage(self):
-        page = QWidget(); outer = QVBoxLayout(page)
-        scroll = QScrollArea(); scroll.setWidgetResizable(True); scroll.setFrameShape(QScrollArea.Shape.NoFrame)
-        inner = QWidget(); inner.setMaximumWidth(1000); lay = QVBoxLayout(inner); scroll.setWidget(inner)
-        row = QHBoxLayout(); row.addStretch(1); row.addWidget(scroll, 1); row.addStretch(1); outer.addLayout(row, 1)
+        page = QWidget()
+        outer = QVBoxLayout(page)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        inner = QWidget()
+        inner.setMaximumWidth(1000)
+        lay = QVBoxLayout(inner)
+        scroll.setWidget(inner)
+        row = QHBoxLayout()
+        row.addStretch(1)
+        row.addWidget(scroll, 1)
+        row.addStretch(1)
+        outer.addLayout(row, 1)
 
-        gb = self._group("Tourist Profile", QFormLayout); form = gb.layout()
-        self.editName = QLineEdit("Турист"); form.addRow("Name:", self.editName)
-        self.spinBudget = self._spin(QDoubleSpinBox, 0, 10_000_000, 20, " €"); form.addRow("Budget:", self.spinBudget)
-        self.comboBudgetMode = self._combo(["on day", "for the whole trip"]); form.addRow("Budget mode:", self.comboBudgetMode)
-        self.spinDays = self._spin(QSpinBox, 1, 30, 2); form.addRow("Trip duration (days):", self.spinDays)
-        self.spinTime = self._spin(QDoubleSpinBox, 1, 24, 8, " h"); form.addRow("Hours per day:", self.spinTime)
+        gb = self._group("Tourist Profile", QFormLayout)
+        form = gb.layout()
+        self.editName = QLineEdit("Турист")
+        form.addRow("Name:", self.editName)
+        self.spinBudget = self._spin(QDoubleSpinBox, 0, 10_000_000, 20, " €")
+        form.addRow("Budget:", self.spinBudget)
+        self.comboBudgetMode = self._combo(["on day", "for the whole trip"])
+        form.addRow("Budget mode:", self.comboBudgetMode)
+        self.spinDays = self._spin(QSpinBox, 1, 30, 2)
+        form.addRow("Trip duration (days):", self.spinDays)
+        self.spinTime = self._spin(QDoubleSpinBox, 1, 24, 8, " h")
+        form.addRow("Hours per day:", self.spinTime)
         lay.addWidget(gb)
 
-        gbTags = self._group("Interests (tags)"); tagsLay = gbTags.layout()
+        gbTags = self._group("Interests (tags)")
+        tagsLay = gbTags.layout()
         for catTitle, items in InterestCategories:
-            catBox = self._group(catTitle, QGridLayout); grid = catBox.layout()
+            catBox = self._group(catTitle, QGridLayout)
+            grid = catBox.layout()
             for i, (key, label) in enumerate(items):
-                chip = QPushButton(label); chip.setCheckable(True); chip.setChecked(key in DefaultInterests)
-                chip.setStyleSheet(TagChipStyle); chip.setToolTip(key); chip.toggled.connect(self.onTagToggled)
-                self.tagButtons[key] = chip; grid.addWidget(chip, i // 3, i % 3)
+                chip = QPushButton(label)
+                chip.setCheckable(True)
+                chip.setChecked(key in DefaultInterests)
+                chip.setStyleSheet(TagChipStyle)
+                chip.setToolTip(key)
+                chip.toggled.connect(self.onTagToggled)
+                self.tagButtons[key] = chip
+                grid.addWidget(chip, i // 3, i % 3)
             tagsLay.addWidget(catBox)
         tagsLay.addWidget(self._label("Selected tag keys:"))
-        self.lblSelectedTags = self._label("", wrap=True, gray=True); tagsLay.addWidget(self.lblSelectedTags)
-        self._updateSelectedTagsLabel(); lay.addWidget(gbTags)
+        self.lblSelectedTags = self._label("", wrap=True, gray=True)
+        tagsLay.addWidget(self.lblSelectedTags)
+        self._updateSelectedTagsLabel()
+        lay.addWidget(gbTags)
 
-        btnRow = QHBoxLayout(); btnRow.addStretch(1)
-        self.btnContinue = self._btn("Apply profile and proceed to city selection →", self.onContinueProfile)
-        btnRow.addWidget(self.btnContinue); lay.addLayout(btnRow); lay.addStretch(1)
+        btnRow = QHBoxLayout()
+        btnRow.addStretch(1)
+        self.btnContinue = self._btn(
+            "Apply profile and proceed to city selection →", self.onContinueProfile
+        )
+        btnRow.addWidget(self.btnContinue)
+        lay.addLayout(btnRow)
+        lay.addStretch(1)
         return page
 
     def _buildPlannerPage(self):
-        page = QWidget(); QHBoxLayout(page)
-        self.splitter = QSplitter(Qt.Orientation.Horizontal); page.layout().addWidget(self.splitter)
+        page = QWidget()
+        QHBoxLayout(page)
+        self.splitter = QSplitter(Qt.Orientation.Horizontal)
+        page.layout().addWidget(self.splitter)
         self.splitter.addWidget(self._buildLeftPanel())
-        self.tabs = QTabWidget(); self.splitter.addWidget(self.tabs)
-        self.splitter.setStretchFactor(0, 0); self.splitter.setStretchFactor(1, 1)
+        self.tabs = QTabWidget()
+        self.splitter.addWidget(self.tabs)
+        self.splitter.setStretchFactor(0, 0)
+        self.splitter.setStretchFactor(1, 1)
         return page
 
     def _buildLeftPanel(self):
-        scroll = QScrollArea(); scroll.setWidgetResizable(True); scroll.setMinimumWidth(600)
-        left = QWidget(); lay = QVBoxLayout(left); scroll.setWidget(left)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setMinimumWidth(600)
+        left = QWidget()
+        lay = QVBoxLayout(left)
+        scroll.setWidget(left)
 
         self.lblDbInfo = self._label("Database: loading automatically...", wrap=True, gray=True)
         lay.addWidget(self.lblDbInfo)
         lay.addWidget(self._btn("← Edit tourist profile", self.onBackToProfile))
 
         gbCity = self._group("1. City")
-        self.comboCity = self._combo([], self.onCityChanged); gbCity.layout().addWidget(self.comboCity)
-        self.lblCityDesc = self._label("", wrap=True); gbCity.layout().addWidget(self.lblCityDesc)
+        self.comboCity = self._combo([], self.onCityChanged)
+        gbCity.layout().addWidget(self.comboCity)
+        self.lblCityDesc = self._label("", wrap=True)
+        gbCity.layout().addWidget(self.lblCityDesc)
         lay.addWidget(gbCity)
 
         gbStart = self._group("2. Starting point of the route (city hotel)")
-        sRow = QHBoxLayout(); sRow.addWidget(QLabel("Hotel:"))
-        self.comboStart = self._combo([], self.onStartChanged); sRow.addWidget(self.comboStart, 1)
+        sRow = QHBoxLayout()
+        sRow.addWidget(QLabel("Hotel:"))
+        self.comboStart = self._combo([], self.onStartChanged)
+        sRow.addWidget(self.comboStart, 1)
         gbStart.layout().addLayout(sRow)
-        self.lblStartHint = self._label("", wrap=True, gray=True); gbStart.layout().addWidget(self.lblStartHint)
+        self.lblStartHint = self._label("", wrap=True, gray=True)
+        gbStart.layout().addWidget(self.lblStartHint)
         lay.addWidget(gbStart)
 
-        gbAct = self._group("3. Actions"); act = gbAct.layout()
+        gbAct = self._group("3. Actions")
+        act = gbAct.layout()
         act.addWidget(self._btn("Catalog of the selected city", self.onShowCatalog))
         act.addWidget(self._btn("Filter by tourist parameters", self.onFilter))
         act.addWidget(self._btn("Sort by relevance", self.onSorted))
         act.addWidget(self._btn("Generate personalized plan", self.onGenerate))
-        pRow = QHBoxLayout(); pRow.addWidget(QLabel("to id:"))
-        self.spinTo = self._spin(QSpinBox, 0, 100000, 3); pRow.addWidget(self.spinTo); act.addLayout(pRow)
-        bRow = QHBoxLayout(); self.chkBudget = QCheckBox("Custom path budget:")
+        pRow = QHBoxLayout()
+        pRow.addWidget(QLabel("to id:"))
+        self.spinTo = self._spin(QSpinBox, 0, 100000, 3)
+        pRow.addWidget(self.spinTo)
+        act.addLayout(pRow)
+        bRow = QHBoxLayout()
+        self.chkBudget = QCheckBox("Custom path budget:")
         bRow.addWidget(self.chkBudget)
-        self.spinPathBudget = self._spin(QDoubleSpinBox, 0, 1_000_000, 10, " €"); bRow.addWidget(self.spinPathBudget)
+        self.spinPathBudget = self._spin(QDoubleSpinBox, 0, 1_000_000, 10, " €")
+        bRow.addWidget(self.spinPathBudget)
         act.addLayout(bRow)
         act.addWidget(self._btn("Find shortest path from the hotel (Dijkstra)", self.onFindPath))
-        lay.addWidget(gbAct); lay.addStretch(1)
+        lay.addWidget(gbAct)
+        lay.addStretch(1)
         return scroll
 
     def _buildTabs(self):
-        tab = QWidget(); lay = QVBoxLayout(tab); tools = QHBoxLayout()
-        self.editSearch = QLineEdit(); self.editSearch.setPlaceholderText("Search by name / tags / details...")
-        self.editSearch.textChanged.connect(self.onSearchChanged); tools.addWidget(self.editSearch)
+        tab = QWidget()
+        lay = QVBoxLayout(tab)
+        tools = QHBoxLayout()
+        self.editSearch = QLineEdit()
+        self.editSearch.setPlaceholderText("Search by name / tags / details...")
+        self.editSearch.textChanged.connect(self.onSearchChanged)
+        tools.addWidget(self.editSearch)
         tools.addWidget(QLabel("Sort:"))
-        self.comboSort = self._combo(SortOptions, self.onSortChanged); tools.addWidget(self.comboSort)
-        tools.addWidget(self._btn("Refresh", self.onShowCatalog)); lay.addLayout(tools)
+        self.comboSort = self._combo(SortOptions, self.onSortChanged)
+        tools.addWidget(self.comboSort)
+        tools.addWidget(self._btn("Refresh", self.onShowCatalog))
+        lay.addLayout(tools)
         self.tableCatalog = QTableWidget(0, len(CatalogColumns))
         self.tableCatalog.setHorizontalHeaderLabels(CatalogColumns)
         self.tableCatalog.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.tableCatalog.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.tableCatalog.setSortingEnabled(True)
         hdr = self.tableCatalog.horizontalHeader()
-        hdr.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents); hdr.setStretchLastSection(True)
+        hdr.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        hdr.setStretchLastSection(True)
         lay.addWidget(self.tableCatalog)
-        self.lblCatalogInfo = QLabel(""); lay.addWidget(self.lblCatalogInfo)
+        self.lblCatalogInfo = QLabel("")
+        lay.addWidget(self.lblCatalogInfo)
         self.tabs.addTab(tab, "City Catalog")
 
-        tab = QWidget(); lay = QVBoxLayout(tab)
-        self.treePlan = QTreeWidget(); self.treePlan.setHeaderLabels(PlanColumns)
+        tab = QWidget()
+        lay = QVBoxLayout(tab)
+        self.treePlan = QTreeWidget()
+        self.treePlan.setHeaderLabels(PlanColumns)
         h = self.treePlan.header()
         h.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         h.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         h.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         h.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
-        lay.addWidget(self.treePlan); self.tabs.addTab(tab, "Travel Plan")
+        lay.addWidget(self.treePlan)
+        self.tabs.addTab(tab, "Travel Plan")
 
-        tab = QWidget(); lay = QVBoxLayout(tab)
-        self.treePath = QTreeWidget(); self.treePath.setHeaderLabels(PathColumns)
+        tab = QWidget()
+        lay = QVBoxLayout(tab)
+        self.treePath = QTreeWidget()
+        self.treePath.setHeaderLabels(PathColumns)
         self.treePath.header().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         lay.addWidget(self.treePath)
-        self.lblPathTotal = QLabel(""); lay.addWidget(self.lblPathTotal)
+        self.lblPathTotal = QLabel("")
+        lay.addWidget(self.lblPathTotal)
         self.tabs.addTab(tab, "Path (Dijkstra)")
 
-        tab = QWidget(); lay = QVBoxLayout(tab)
-        self.lblMetrics = self._label("Plan not generated yet", wrap=True); lay.addWidget(self.lblMetrics)
-        self.txtSummary = QTextEdit(); self.txtSummary.setReadOnly(True); lay.addWidget(self.txtSummary)
+        tab = QWidget()
+        lay = QVBoxLayout(tab)
+        self.lblMetrics = self._label("Plan not generated yet", wrap=True)
+        lay.addWidget(self.lblMetrics)
+        self.txtSummary = QTextEdit()
+        self.txtSummary.setReadOnly(True)
+        lay.addWidget(self.txtSummary)
         self.tabs.addTab(tab, "Metrics & Summary")
 
     # ---------- клієнт ----------
@@ -227,11 +349,16 @@ class MainWindow(QMainWindow):
         d = combo.currentData()
         return int(d) if d is not None else -1
 
-    def _currentCityId(self): return self._comboId(self.comboCity)
-    def _currentStartId(self): return self._comboId(self.comboStart)
+    def _currentCityId(self):
+        return self._comboId(self.comboCity)
+
+    def _currentStartId(self):
+        return self._comboId(self.comboStart)
 
     def _selectedTags(self):
-        return [k for k in AllInterestKeys if k in self.tagButtons and self.tagButtons[k].isChecked()]
+        return [
+            k for k in AllInterestKeys if k in self.tagButtons and self.tagButtons[k].isChecked()
+        ]
 
     def _updateSelectedTagsLabel(self):
         tags = self._selectedTags()
@@ -245,45 +372,75 @@ class MainWindow(QMainWindow):
 
     def _applyProfile(self):
         self.client.setTourist(
-            self.editName.text().strip() or "Tourist", self.spinBudget.value(),
-            self.comboBudgetMode.currentIndex() == 1, self.spinDays.value(), self.spinTime.value(),
-            self._selectedTags(), cityId=self._currentCityId())
+            self.editName.text().strip() or "Tourist",
+            self.spinBudget.value(),
+            self.comboBudgetMode.currentIndex() == 1,
+            self.spinDays.value(),
+            self.spinTime.value(),
+            self._selectedTags(),
+            cityId=self._currentCityId(),
+        )
 
     def _fillCities(self):
-        self.comboCity.blockSignals(True); self.comboCity.clear()
+        self.comboCity.blockSignals(True)
+        self.comboCity.clear()
         for c in self.cities:
-            label = f"{c['name']} (id={c['id']}" + (f", {c['region']}" if c.get("region") else "") + ")"
+            label = (
+                f"{c['name']} (id={c['id']}" + (f", {c['region']}" if c.get("region") else "") + ")"
+            )
             self.comboCity.addItem(label, c["id"])
         self.comboCity.blockSignals(False)
         if self.cities:
-            self.comboCity.setCurrentIndex(0); self._updateCityDesc()
+            self.comboCity.setCurrentIndex(0)
+            self._updateCityDesc()
 
     def _updateCityDesc(self):
         idx = self.comboCity.currentIndex()
-        self.lblCityDesc.setText(self.cities[idx].get("description", "") if 0 <= idx < len(self.cities) else "")
+        self.lblCityDesc.setText(
+            self.cities[idx].get("description", "") if 0 <= idx < len(self.cities) else ""
+        )
 
     def _fillStartPoints(self):
-        self.comboStart.blockSignals(True); self.comboStart.clear()
+        self.comboStart.blockSignals(True)
+        self.comboStart.clear()
         cityId = self._currentCityId()
         hotels = sorted(
-            (d for d in (self.client.getCatalog(cityId) if cityId >= 0 and self.client else []) if self._isHotel(d)),
-            key=lambda d: str(d.get("name", "")))
+            (
+                d
+                for d in (self.client.getCatalog(cityId) if cityId >= 0 and self.client else [])
+                if self._isHotel(d)
+            ),
+            key=lambda d: str(d.get("name", "")),
+        )
         for h in hotels:
             self.comboStart.addItem(f"{h['name']} (id={h['id']})", h["id"])
         self.comboStart.blockSignals(False)
         self.lblStartHint.setText(
-            f"Готелів у місті: {len(hotels)} — старт маршруту обирається зі списку." if hotels
-            else "У базі немає готелів обраного міста (потрібен об'єкт із тегом hotel/accommodation) — шлях від готелю недоступний.")
+            f"Готелів у місті: {len(hotels)} — старт маршруту обирається зі списку."
+            if hotels
+            else "У базі немає готелів обраного міста (потрібен об'єкт із тегом hotel/accommodation) — шлях від готелю недоступний."
+        )
 
     def _fillCatalogTable(self, rows):
-        self.tableCatalog.setSortingEnabled(False); self.tableCatalog.setRowCount(0)
+        self.tableCatalog.setSortingEnabled(False)
+        self.tableCatalog.setRowCount(0)
         for d in rows:
-            r = self.tableCatalog.rowCount(); self.tableCatalog.insertRow(r)
-            vals = [d["type"], d["name"], d["cost"], d["rating"], d["openHour"], d["closeHour"],
-                    ", ".join(d.get("tags", [])), d.get("details", "")]
+            r = self.tableCatalog.rowCount()
+            self.tableCatalog.insertRow(r)
+            vals = [
+                d["type"],
+                d["name"],
+                d["cost"],
+                d["rating"],
+                d["openHour"],
+                d["closeHour"],
+                ", ".join(d.get("tags", [])),
+                d.get("details", ""),
+            ]
             for col, v in enumerate(vals):
                 self.tableCatalog.setItem(r, col, _item(v, numeric=col in CatalogNumeric))
-        self.tableCatalog.setSortingEnabled(True); self._applySearchFilter()
+        self.tableCatalog.setSortingEnabled(True)
+        self._applySearchFilter()
         self.lblCatalogInfo.setText(f"Showing destinations: {self.tableCatalog.rowCount()}")
 
     def _applySearchFilter(self):
@@ -292,103 +449,143 @@ class MainWindow(QMainWindow):
             if not text:
                 self.tableCatalog.setRowHidden(r, False)
             else:
-                hay = " ".join(self.tableCatalog.item(r, c).text() for c in CatalogSearchColumns).lower()
+                hay = " ".join(
+                    self.tableCatalog.item(r, c).text() for c in CatalogSearchColumns
+                ).lower()
                 self.tableCatalog.setRowHidden(r, text not in hay)
 
     def _showError(self, title, message):
-        QMessageBox.warning(self, title, message); self.statusBar().showMessage(message)
+        QMessageBox.warning(self, title, message)
+        self.statusBar().showMessage(message)
 
     # ---------- обробники ----------
     def _autoLoadDb(self):
-        if not self._requireClient(): return
+        if not self._requireClient():
+            return
         try:
             self.client.loadData(self.dbPath)
         except RuntimeError as e:
             self.lblDbInfo.setText(f"Database: failed to load ({e})")
-            self._showError("Database load error", str(e)); return
-        self.cities = self.client.getCities(); self._fillCities(); self._buildTabs()
+            self._showError("Database load error", str(e))
+            return
+        self.cities = self.client.getCities()
+        self._fillCities()
+        self._buildTabs()
         self.lblDbInfo.setText(
             f"Database (auto-loaded): {os.path.basename(self.dbPath)} — "
-            f"{len(self.cities)} cities, {self.client.catalogSize()} destinations, {self.client.routesCount()} graph edges")
-        self.statusBar().showMessage(f"Database loaded automatically: {self.dbPath} — заповніть профіль туриста")
+            f"{len(self.cities)} cities, {self.client.catalogSize()} destinations, {self.client.routesCount()} graph edges"
+        )
+        self.statusBar().showMessage(
+            f"Database loaded automatically: {self.dbPath} — заповніть профіль туриста"
+        )
         self.stack.setCurrentIndex(0)
 
-    def onTagToggled(self, _checked): self._updateSelectedTagsLabel()
+    def onTagToggled(self, _checked):
+        self._updateSelectedTagsLabel()
 
     def onContinueProfile(self):
-        if not self._requireClient(): return
+        if not self._requireClient():
+            return
         if not self.editName.text().strip():
-            self._showError("Профіль не заповнено", "Input your name"); return
+            self._showError("Профіль не заповнено", "Input your name")
+            return
         if not self._selectedTags():
-            self._showError("Профіль не заповнено", "Chose tags, min one required"); return
+            self._showError("Профіль не заповнено", "Chose tags, min one required")
+            return
         try:
             self._applyProfile()
         except Exception as e:
-            self._showError("Profile error", str(e)); return
+            self._showError("Profile error", str(e))
+            return
         self.stack.setCurrentIndex(1)
         if self.cities:
-            self.comboCity.setCurrentIndex(0); self.onCityChanged(0)
+            self.comboCity.setCurrentIndex(0)
+            self.onCityChanged(0)
         p = self.client.getProfile()
         self.statusBar().showMessage(
-            f"Профіль застосовано: {p.get('name')}, теги: {', '.join(p.get('interests', []))}. Chosen city: {self.comboCity.currentText()}.")
+            f"Профіль застосовано: {p.get('name')}, теги: {', '.join(p.get('interests', []))}. Chosen city: {self.comboCity.currentText()}."
+        )
 
     def onBackToProfile(self):
-        self.stack.setCurrentIndex(0); self.statusBar().showMessage("Редагування профілю туриста")
+        self.stack.setCurrentIndex(0)
+        self.statusBar().showMessage("Редагування профілю туриста")
 
     def onCityChanged(self, _index):
         self._updateCityDesc()
-        if not self._requireClient(): return
+        if not self._requireClient():
+            return
         cityId = self._currentCityId()
         if cityId >= 0:
-            try: self._applyProfile()
-            except Exception: pass
+            try:
+                self._applyProfile()
+            except Exception:
+                pass
         self._fillStartPoints()
         self.statusBar().showMessage(f"Selected city id={cityId}")
         self.onShowCatalog()
 
     def onStartChanged(self, _index):
         sid = self._currentStartId()
-        if sid >= 0: self.statusBar().showMessage(f"Start point (hotel) id={sid}")
+        if sid >= 0:
+            self.statusBar().showMessage(f"Start point (hotel) id={sid}")
 
     def onShowCatalog(self):
-        if not self._requireClient(): return
+        if not self._requireClient():
+            return
         self._fillCatalogTable(self.client.getCatalog(self._currentCityId()))
         self.tabs.setCurrentIndex(0)
 
     def onFilter(self):
-        if not self._requireClient(): return
+        if not self._requireClient():
+            return
         self._applyProfile()
-        rows = self.client.filterDestinations(); self._fillCatalogTable(rows)
+        rows = self.client.filterDestinations()
+        self._fillCatalogTable(rows)
         self.statusBar().showMessage(f"Filter (linear search) found destinations: {len(rows)}")
         self.tabs.setCurrentIndex(0)
 
     def onSorted(self):
-        if not self._requireClient(): return
+        if not self._requireClient():
+            return
         self._applyProfile()
-        rows = self.client.sortedDestinations(); self._fillCatalogTable(rows)
-        self.comboSort.blockSignals(True); self.comboSort.setCurrentIndex(1); self.comboSort.blockSignals(False)
+        rows = self.client.sortedDestinations()
+        self._fillCatalogTable(rows)
+        self.comboSort.blockSignals(True)
+        self.comboSort.setCurrentIndex(1)
+        self.comboSort.blockSignals(False)
         self.statusBar().showMessage(f"Sorted by relevance: {len(rows)} destinations")
         self.tabs.setCurrentIndex(0)
 
     def onSearchChanged(self, text):
-        self._searchText = text; self._applySearchFilter()
+        self._searchText = text
+        self._applySearchFilter()
 
     def onSortChanged(self, index):
         if index == 1:
             self.onSorted()
         elif index in SortColumnMap:
-            order = Qt.SortOrder.AscendingOrder if SortAscending[index] else Qt.SortOrder.DescendingOrder
+            order = (
+                Qt.SortOrder.AscendingOrder
+                if SortAscending[index]
+                else Qt.SortOrder.DescendingOrder
+            )
             self.tableCatalog.sortItems(SortColumnMap[index], order)
 
     def onGenerate(self):
-        if not self._requireClient(): return
+        if not self._requireClient():
+            return
         try:
-            self._applyProfile(); plan = self.client.generatePlan()
+            self._applyProfile()
+            plan = self.client.generatePlan()
         except Exception as e:
-            self._showError("Plan generation error", str(e)); return
-        self.lastPlan = plan; self._fillPlanTree(plan); self._fillMetrics(plan)
+            self._showError("Plan generation error", str(e))
+            return
+        self.lastPlan = plan
+        self._fillPlanTree(plan)
+        self._fillMetrics(plan)
         self.statusBar().showMessage(
-            f"Plan generated: cost {plan.get('totalCost', 0):g} EUR, remaining {plan.get('remainingBudget', 0):g} EUR")
+            f"Plan generated: cost {plan.get('totalCost', 0):g} EUR, remaining {plan.get('remainingBudget', 0):g} EUR"
+        )
         self.tabs.setCurrentIndex(1)
 
     def _fillPlanTree(self, plan):
@@ -397,35 +594,61 @@ class MainWindow(QMainWindow):
             tTime = tCost = 0.0
             node = QTreeWidgetItem(self.treePlan, [f"Day {day['day']}", "", "", ""])
             node.setFirstColumnSpanned(True)
-            f = node.font(0); f.setBold(True); node.setFont(0, f)
+            f = node.font(0)
+            f.setBold(True)
+            node.setFont(0, f)
             for it in day.get("items", []):
                 dest = it.get("destination") or {}
                 for t in it.get("transfers", []):
-                    QTreeWidgetItem(node, [f"→ transfer {t['fromId']} → {t['toId']}", f"{t['timeHours']:.3f}",
-                        f"{t['cost']:g}", f"{t['distanceKm']:g} km — {_fmtTransport(t.get('lane', {}))}"])
-                    tTime += t["timeHours"]; tCost += t["cost"]
+                    QTreeWidgetItem(
+                        node,
+                        [
+                            f"→ transfer {t['fromId']} → {t['toId']}",
+                            f"{t['timeHours']:.3f}",
+                            f"{t['cost']:g}",
+                            f"{t['distanceKm']:g} km — {_fmtTransport(t.get('lane', {}))}",
+                        ],
+                    )
+                    tTime += t["timeHours"]
+                    tCost += t["cost"]
                 if dest:
-                    QTreeWidgetItem(node, [f"• {dest['name']}", f"{dest.get('visitDuration', 0):g}",
-                        f"{dest.get('cost', 0):g}", f"{dest.get('type', '')}, rating {dest.get('rating', 0):g}, "
-                        f"hours {dest.get('openHour', 0):g}–{dest.get('closeHour', 0):g}, tags: {', '.join(dest.get('tags', []))}"])
-                    tTime += dest.get("visitDuration", 0); tCost += dest.get("cost", 0)
-            node.setText(1, f"{tTime:.2f}"); node.setText(2, f"{tCost:g}")
+                    QTreeWidgetItem(
+                        node,
+                        [
+                            f"• {dest['name']}",
+                            f"{dest.get('visitDuration', 0):g}",
+                            f"{dest.get('cost', 0):g}",
+                            f"{dest.get('type', '')}, rating {dest.get('rating', 0):g}, "
+                            f"hours {dest.get('openHour', 0):g}–{dest.get('closeHour', 0):g}, tags: {', '.join(dest.get('tags', []))}",
+                        ],
+                    )
+                    tTime += dest.get("visitDuration", 0)
+                    tCost += dest.get("cost", 0)
+            node.setText(1, f"{tTime:.2f}")
+            node.setText(2, f"{tCost:g}")
         self.treePlan.expandAll()
 
     def _fillMetrics(self, plan):
         self.lblMetrics.setText(
             f"Total cost: {plan.get('totalCost', 0):g} EUR\nRemaining budget: {plan.get('remainingBudget', 0):g} EUR\n"
             f"Travel time: {plan.get('totalTravelTime', 0):.2f} h\nTime on site: {plan.get('totalVisitTime', 0):.2f} h\n"
-            f"Total plan time: {plan.get('totalDuration', 0):.2f} h\nSelected city: id={plan.get('targetCityId', -1)}")
+            f"Total plan time: {plan.get('totalDuration', 0):.2f} h\nSelected city: id={plan.get('targetCityId', -1)}"
+        )
         self.txtSummary.setPlainText(plan.get("summary", ""))
 
     def onFindPath(self):
-        if not self._requireClient(): return
-        try: self._applyProfile()
-        except Exception: pass
+        if not self._requireClient():
+            return
+        try:
+            self._applyProfile()
+        except Exception:
+            pass
         a = self._currentStartId()
         if a < 0:
-            self._showError("Стартова точка не обрана", "Оберіть готель зі списку стартових точок обраного міста.")
+            self._showError(
+                "Стартова точка не обрана",
+                "Оберіть готель зі списку стартових точок обраного міста.",
+            )
             return
         b = self.spinTo.value()
         budget = self.spinPathBudget.value() if self.chkBudget.isChecked() else None
@@ -433,12 +656,24 @@ class MainWindow(QMainWindow):
         self.treePath.clear()
         tTime = tCost = 0.0
         if not steps:
-            QTreeWidgetItem(self.treePath, [f"No path {a} → {b} within the selected city", "", "", "", ""])
+            QTreeWidgetItem(
+                self.treePath, [f"No path {a} → {b} within the selected city", "", "", "", ""]
+            )
         for s in steps:
-            QTreeWidgetItem(self.treePath, [f"{s['fromId']} → {s['toId']}", f"{s['distanceKm']:g}",
-                f"{s['timeHours']:.3f}", f"{s['cost']:g}", _fmtTransport(s.get("lane", {}))])
-            tTime += s["timeHours"]; tCost += s["cost"]
+            QTreeWidgetItem(
+                self.treePath,
+                [
+                    f"{s['fromId']} → {s['toId']}",
+                    f"{s['distanceKm']:g}",
+                    f"{s['timeHours']:.3f}",
+                    f"{s['cost']:g}",
+                    _fmtTransport(s.get("lane", {})),
+                ],
+            )
+            tTime += s["timeHours"]
+            tCost += s["cost"]
         self.lblPathTotal.setText(
             f"Total: {len(steps)} transfers, {tTime:.3f} h travel, {tCost:g} EUR"
-            + (f" (path budget: {budget:g} EUR)" if budget is not None else " (profile budget)"))
+            + (f" (path budget: {budget:g} EUR)" if budget is not None else " (profile budget)")
+        )
         self.tabs.setCurrentIndex(2)

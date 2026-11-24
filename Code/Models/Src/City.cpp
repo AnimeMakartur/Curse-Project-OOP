@@ -4,8 +4,8 @@ namespace travel {
 
 City::City() : id(0), name(""), region(""), description("") {}
 
-City::City(int id, const std::string& name,
-           const std::string& region, const std::string& description)
+City::City(int id, const std::string& name, const std::string& region,
+           const std::string& description)
     : id(id), name(name), region(region), description(description) {}
 
 int City::getId() const { return id; }

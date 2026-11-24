@@ -3,10 +3,10 @@ name: Build & Release
 on:
   push:
     tags:
-      - 'v*'          # реліз збирається автоматично при пуші тега v1.0.0, v1.1.0, ...
+      - "v*" # реліз збирається автоматично при пуші тега v1.0.0, v1.1.0, ...
 
 permissions:
-  contents: write    # дозвіл створювати Release
+  contents: write # дозвіл створювати Release
 
 jobs:
   windows:
@@ -16,7 +16,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
       # 1. Ставимо компілятор і збираємо C++ ядро твоїм же build.bat -> travelcore.dll
       - name: Install MinGW
@@ -41,21 +41,44 @@ jobs:
 
       # 4. Складаємо папку апки: View/ (exe) + Controllers/ (dll) + DataBase/ (json)
       #    так, щоб відносні шляхи ../Controllers і ../DataBase з app.py знаходились
-      - name: Compose app folder + shortcut
+      - name: Compose app folder
         shell: cmd
         run: |
           mkdir dist\TravelSystemApp\View dist\TravelSystemApp\Controllers dist\TravelSystemApp\DataBase
           move dist\TravelSystem dist\TravelSystemApp\View
           copy Code\Controllers\travelcore.dll dist\TravelSystemApp\Controllers\
           copy Code\DataBase\travel_db.json dist\TravelSystemApp\DataBase\
-          powershell -NoProfile -Command "$s=(New-Object -ComObject WScript.Shell).CreateShortcut('%CD%\dist\TravelSystemApp\TravelSystem.lnk'); $s.TargetPath='%CD%\dist\TravelSystemApp\View\TravelSystem.exe'; $s.WorkingDirectory='%CD%\dist\TravelSystemApp\View'; $s.Save()"
 
-      # 5. Архівуємо
+      # 5. Файли запуску ЛЕЖАТЬ ЗОВНІ папки програми (на рівень вище, поруч з нею).
+      #    Шляхи у них ВІДНОСНІ, тому після розпакування архіву будь-де все працює.
+      #    (Раніше ярлик створювався з абсолютним шляхом раннера D:\a\... — тому був "пустий".)
+      - name: Create run.bat launcher (outside app folder)
+        shell: cmd
+        run: |
+          (
+            echo @echo off
+            echo cd /d "%%~dp0TravelSystemApp\View"
+            echo start "" "TravelSystem.exe"
+          ) > dist\run.bat
+
+      - name: Create TravelSystem.lnk shortcut (outside app folder, relative paths)
+        shell: powershell
+        run: |
+          Set-Location dist
+          $ws = New-Object -ComObject WScript.Shell
+          $lnk = $ws.CreateShortcut((Join-Path (Get-Location) 'TravelSystem.lnk'))
+          $lnk.TargetPath = 'TravelSystemApp\View\TravelSystem.exe'
+          $lnk.WorkingDirectory = 'TravelSystemApp\View'
+          $lnk.IconLocation = 'TravelSystemApp\View\TravelSystem.exe,0'
+          $lnk.Save()
+
+      # 6. Архівуємо: в архіві буде папка TravelSystemApp/ + run.bat + TravelSystem.lnk поруч з нею.
+      #    Zip кладемо в корінь репо (не в dist), щоб він не потрапив сам у себе.
       - name: Zip
-        run: powershell -NoProfile -Command "Compress-Archive -Path dist\TravelSystemApp\* -DestinationPath dist\TravelSystemApp-win.zip -Force"
+        run: powershell -NoProfile -Command "Compress-Archive -Path dist\* -DestinationPath TravelSystemApp-win.zip -Force"
 
-      # 6. Публікуємо Release з цим zip автоматично
+      # 7. Публікуємо Release з цим zip автоматично
       - uses: softprops/action-gh-release@v2
         with:
-          files: dist/TravelSystemApp-win.zip
+          files: TravelSystemApp-win.zip
           generate_release_notes: true

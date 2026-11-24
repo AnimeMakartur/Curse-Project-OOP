@@ -6,16 +6,16 @@ namespace travel {
 
 // Музейний заклад — похідний клас від TouristDestination.
 class Museum : public TouristDestination {
-private:
+  private:
     int exhibitsCount;
     bool hasAudioGuide;
     std::string expositionTheme;
 
-public:
+  public:
     Museum(int id, int cityId, const std::string& name, double cost, double rating,
            double visitDuration, double openHour, double closeHour,
-           const std::vector<std::string>& tags,
-           int exhibitsCount, bool hasAudioGuide, const std::string& expositionTheme);
+           const std::vector<std::string>& tags, int exhibitsCount, bool hasAudioGuide,
+           const std::string& expositionTheme);
 
     double calculateRelevance(const Tourist& t, double w1, double w2, double w3) override;
     std::string getDetails() const override;

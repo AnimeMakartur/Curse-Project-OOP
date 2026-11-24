@@ -19,20 +19,21 @@ struct DayItem {
 
 // Сформований план подорожі: розклад по днях (об'єкти + маршрути між ними) та метрики.
 class TravelPlan {
-private:
+  private:
     Tourist tourist;
     std::vector<std::vector<DayItem>> days; // [день (0-based)][пункти]
-    double totalCost = 0.0;         // квитки + проїзд, EUR
-    double totalDuration = 0.0;     // весь час плану, год
-    double totalTravelTime = 0.0;   // час у дорозі, год
-    double totalVisitTime = 0.0;    // час на локаціях, год
+    double totalCost = 0.0;                 // квитки + проїзд, EUR
+    double totalDuration = 0.0;             // весь час плану, год
+    double totalTravelTime = 0.0;           // час у дорозі, год
+    double totalVisitTime = 0.0;            // час на локаціях, год
 
-public:
+  public:
     TravelPlan();
     explicit TravelPlan(const Tourist& tourist);
 
     // Додає пункт у день (day — 1-based): об'єкт та шлях, яким до нього дійшли
-    void addDayStep(int day, const TouristDestination& dest, const std::vector<PathStep>& transfers);
+    void addDayStep(int day, const TouristDestination& dest,
+                    const std::vector<PathStep>& transfers);
     void addDayStep(int day, const TouristDestination& dest); // без переходу (старт дня)
 
     void calculateTotalMetrics();

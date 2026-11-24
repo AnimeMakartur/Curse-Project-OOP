@@ -9,7 +9,7 @@ namespace travel {
 // транспорту з розрахованим часом і вартістю переходу.
 struct PathStep {
     Route route;
-    Lane lane;          // обраний вид транспорту / смуга
+    Lane lane;              // обраний вид транспорту / смуга
     double timeHours = 0.0; // час переходу цією смугою, год
     double cost = 0.0;      // вартість проїзду, EUR
 

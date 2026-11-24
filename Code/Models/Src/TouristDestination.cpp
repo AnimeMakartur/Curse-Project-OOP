@@ -9,9 +9,8 @@ namespace travel {
 static const double RATING_MAX = 5.0; // максимальний бал рейтингу в системі
 
 TouristDestination::TouristDestination(int id, int cityId, const std::string& name, double cost,
-                                       double rating, double visitDuration,
-                                       double openHour, double closeHour,
-                                       const std::vector<std::string>& tags)
+                                       double rating, double visitDuration, double openHour,
+                                       double closeHour, const std::vector<std::string>& tags)
     : id(id), cityId(cityId), name(name), cost(cost), rating(rating), visitDuration(visitDuration),
       openHour(openHour), closeHour(closeHour), tags(tags), relevanceScore(0.0) {}
 

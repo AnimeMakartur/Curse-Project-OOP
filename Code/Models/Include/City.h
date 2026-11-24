@@ -8,16 +8,16 @@ namespace travel {
 // Кожне місто має унікальний id; об'єкти (TouristDestination) та ребра графа (Route)
 // прив'язані до міста через cityId.
 class City {
-private:
+  private:
     int id;
     std::string name;
-    std::string region;       // область / регіон
-    std::string description;  // короткий опис агломерації
+    std::string region;      // область / регіон
+    std::string description; // короткий опис агломерації
 
-public:
+  public:
     City();
-    City(int id, const std::string& name,
-         const std::string& region = "", const std::string& description = "");
+    City(int id, const std::string& name, const std::string& region = "",
+         const std::string& description = "");
 
     int getId() const;
     std::string getName() const;

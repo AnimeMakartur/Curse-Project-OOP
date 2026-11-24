@@ -3,8 +3,8 @@
 namespace travel {
 
 Tourist::Tourist()
-    : id(0), name(""), inputBudget(0.0), isTotalBudget(false),
-      tripDays(1), dailyTimeLimit(8.0), targetCityId(-1) {}
+    : id(0), name(""), inputBudget(0.0), isTotalBudget(false), tripDays(1), dailyTimeLimit(8.0),
+      targetCityId(-1) {}
 
 Tourist::Tourist(int id, const std::string& name, double inputBudget, bool isTotalBudget,
                  int tripDays, double dailyTimeLimit, const std::vector<std::string>& interestTags,
@@ -20,13 +20,9 @@ double Tourist::getDailyBudget() const {
     return inputBudget;
 }
 
-double Tourist::getTotalBudget() const {
-    return getDailyBudget() * tripDays;
-}
+double Tourist::getTotalBudget() const { return getDailyBudget() * tripDays; }
 
-std::vector<std::string> Tourist::getInterests() const {
-    return interestTags;
-}
+std::vector<std::string> Tourist::getInterests() const { return interestTags; }
 
 void Tourist::updateProfile(double budget, int days, const std::vector<std::string>& tags) {
     inputBudget = budget;
@@ -44,7 +40,10 @@ int Tourist::getTargetCityId() const { return targetCityId; }
 
 void Tourist::setName(const std::string& newName) { name = newName; }
 
-void Tourist::setBudget(double budget, bool isTotal) { inputBudget = budget; isTotalBudget = isTotal; }
+void Tourist::setBudget(double budget, bool isTotal) {
+    inputBudget = budget;
+    isTotalBudget = isTotal;
+}
 
 void Tourist::setTripDays(int days) { tripDays = days > 0 ? days : 1; }
 
