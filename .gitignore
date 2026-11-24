@@ -15,6 +15,7 @@ Diagrams/*
 JSON CS2/*.json
 
 _docx_full.txt
+all_code.txt
 # Build artifacts & Python cache
 Code/Controllers/*.dll
 Code/Controllers/*.lib
