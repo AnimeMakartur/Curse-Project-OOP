@@ -8,11 +8,6 @@
 *.pptx
 *.vsdx
 *.pdf
-#Images
-*.png
-*.jpg
-*.jpeg
-*.gif
 
 #Folder Ignore
 Diagrams/*

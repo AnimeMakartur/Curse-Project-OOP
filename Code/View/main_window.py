@@ -3,12 +3,196 @@
 
 import os
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor, QPainter, QPixmap
 from PyQt6.QtWidgets import *
 from travel_client import TravelClient
 
 DefaultDb = os.path.normpath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "DataBase", "travel_db.json")
 )
+
+# Задник сторінки створення профілю туриста — фото з Code/View/images
+_ViewDir = os.path.dirname(os.path.abspath(__file__))
+ProfileBgImage = os.path.normpath(
+    os.path.join(_ViewDir, "images", "istockphoto-1477997501-1024x1024.jpg")
+)
+if not os.path.exists(ProfileBgImage):
+    # фолбек на колишнє розміщення в корені репозиторію
+    _legacy = os.path.normpath(
+        os.path.join(_ViewDir, "..", "..", "istockphoto-1477997501-1024x1024.jpg")
+    )
+    if os.path.exists(_legacy):
+        ProfileBgImage = _legacy
+
+# Основна кольорова тема застосунку: синій + білий.
+# Базове правило QWidget — щоб ЛЮБИЙ віджет (у т.ч. при темній системній палітрі)
+# мав білий фон і темний текст: без нього лишки теми та "білий текст на білому".
+AppStyleSheet = """
+QWidget {
+    background: #ffffff;
+    color: #1a2b4a;
+}
+QMainWindow, QStackedWidget, QDialog {
+    background: #ffffff;
+}
+QLabel {
+    color: #1a2b4a;
+}
+QGroupBox {
+    background: #ffffff;
+    border: 1px solid #c9d9f5;
+    border-radius: 8px;
+    margin-top: 14px;
+    padding: 10px;
+    font-weight: bold;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    left: 12px;
+    padding: 0 6px;
+    color: #1a4fb0;
+    background: #ffffff;
+}
+QPushButton {
+    background: #2d6cdf;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 16px;
+    font-weight: bold;
+}
+QPushButton:hover {
+    background: #1a4fb0;
+}
+QPushButton:pressed {
+    background: #143c8a;
+}
+QPushButton:disabled {
+    background: #b9cff2;
+    color: #f0f5ff;
+}
+QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QTextEdit {
+    background: #ffffff;
+    border: 1px solid #c9d9f5;
+    border-radius: 6px;
+    padding: 5px 8px;
+    color: #1a2b4a;
+    selection-background-color: #2d6cdf;
+    selection-color: #ffffff;
+}
+QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus {
+    border: 1px solid #2d6cdf;
+}
+QTextEdit:focus {
+    border: 1px solid #2d6cdf;
+}
+QComboBox QAbstractItemView {
+    background: #ffffff;
+    color: #1a2b4a;
+    border: 1px solid #c9d9f5;
+    selection-background-color: #e8f0fd;
+    selection-color: #1a4fb0;
+}
+QMenu {
+    background: #ffffff;
+    color: #1a2b4a;
+    border: 1px solid #c9d9f5;
+}
+QMenu::item:selected {
+    background: #2d6cdf;
+    color: #ffffff;
+}
+QToolTip {
+    background: #ffffff;
+    color: #1a2b4a;
+    border: 1px solid #c9d9f5;
+}
+QScrollBar:vertical, QScrollBar:horizontal {
+    background: #f2f7ff;
+    border: none;
+}
+QScrollBar:vertical {
+    width: 12px;
+}
+QScrollBar:horizontal {
+    height: 12px;
+}
+QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
+    background: #c9d9f5;
+    border-radius: 6px;
+    min-height: 24px;
+    min-width: 24px;
+}
+QScrollBar::handle:vertical:hover, QScrollBar::handle:horizontal:hover {
+    background: #2d6cdf;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical,
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    height: 0;
+    width: 0;
+}
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical,
+QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
+    background: transparent;
+}
+QCheckBox {
+    color: #1a2b4a;
+    spacing: 6px;
+}
+QCheckBox::indicator {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #c9d9f5;
+    border-radius: 4px;
+    background: #ffffff;
+}
+QCheckBox::indicator:checked {
+    background: #2d6cdf;
+    border-color: #2d6cdf;
+}
+QTableWidget, QTreeWidget {
+    background: #ffffff;
+    alternate-background-color: #f2f7ff;
+    gridline-color: #d7e4fa;
+    border: 1px solid #c9d9f5;
+    selection-background-color: #2d6cdf;
+    selection-color: #ffffff;
+    color: #1a2b4a;
+}
+QHeaderView::section {
+    background: #2d6cdf;
+    color: #ffffff;
+    border: none;
+    padding: 6px;
+    font-weight: bold;
+}
+QTabWidget::pane {
+    border: 1px solid #c9d9f5;
+    background: #ffffff;
+    border-radius: 6px;
+}
+QTabBar::tab {
+    background: #e8f0fd;
+    color: #1a4fb0;
+    padding: 8px 18px;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    margin-right: 2px;
+    font-weight: bold;
+}
+QTabBar::tab:selected {
+    background: #2d6cdf;
+    color: #ffffff;
+}
+QStatusBar {
+    background: #1a4fb0;
+    color: #ffffff;
+}
+QSplitter::handle {
+    background: #c9d9f5;
+}
+"""
 
 # Теги інтересів: (категорія, [(ключ_для_ядра, підпис_UI), ...])
 InterestCategories = [
@@ -68,8 +252,9 @@ SortAscending = {2: True, 3: False, 4: False}
 PlanColumns = ["Step", "Time, h", "Cost, EUR", "Details"]
 PathColumns = ["Transfer", "Distance, km", "Time, h", "Cost, EUR", "Chosen transport / line"]
 TagChipStyle = (
-    "QPushButton { border: 1px solid #b8b8b8; border-radius: 10px; padding: 3px 10px; background: #f4f4f4; }"
-    "QPushButton:hover { border-color: #2d6cdf; }"
+    "QPushButton { border: 1px solid #c9d9f5; border-radius: 10px; padding: 3px 10px;"
+    " background: #ffffff; color: #1a4fb0; }"
+    "QPushButton:hover { border-color: #2d6cdf; background: #e8f0fd; }"
     "QPushButton:checked { background: #2d6cdf; color: #ffffff; border-color: #2d6cdf; }"
 )
 
@@ -87,11 +272,39 @@ def _fmtTransport(lane):
     return f"{t} «{rn}»" if rn else t
 
 
+class _BackgroundPage(QWidget):
+    """Сторінка з фоновим фото: картинка розтягується на весь віджет (cover)."""
+
+    def __init__(self, imagePath, parent=None):
+        super().__init__(parent)
+        self._bg = QPixmap(imagePath)
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if self._bg.isNull():
+            return
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        scaled = self._bg.scaled(
+            self.size(),
+            Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+        painter.drawPixmap(
+            (self.width() - scaled.width()) // 2,
+            (self.height() - scaled.height()) // 2,
+            scaled,
+        )
+        # легке синє тонування поверх фото — під колірну тему застосунку
+        painter.fillRect(self.rect(), QColor(26, 79, 176, 28))
+
+
 class MainWindow(QMainWindow):
     def __init__(self, dbPath=None):
         super().__init__()
         self.setWindowTitle("TravelSystem — Personalized Travel Planner")
         self.resize(1920, 1080)
+        self.setStyleSheet(AppStyleSheet)
         self.client = None
         self.cities = []
         self.lastPlan = None
@@ -132,7 +345,7 @@ class MainWindow(QMainWindow):
         if wrap:
             l.setWordWrap(True)
         if gray:
-            l.setStyleSheet("color: gray;")
+            l.setStyleSheet("color: #5b6b8c;")
         return l
 
     @staticmethod
@@ -149,18 +362,26 @@ class MainWindow(QMainWindow):
         self.stack.setCurrentIndex(0)
 
     def _buildProfilePage(self):
-        page = QWidget()
+        page = _BackgroundPage(ProfileBgImage)
         outer = QVBoxLayout(page)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        scroll.setStyleSheet(
+            "QScrollArea, QScrollArea > QWidget { background: transparent; border: none; }"
+        )
         inner = QWidget()
+        inner.setObjectName("profileCard")
         inner.setMaximumWidth(1000)
+        inner.setStyleSheet(
+            "#profileCard { background-color: rgba(255, 255, 255, 0.92); border-radius: 14px; }"
+        )
         lay = QVBoxLayout(inner)
+        lay.setContentsMargins(20, 20, 20, 20)
         scroll.setWidget(inner)
         row = QHBoxLayout()
         row.addStretch(1)
-        row.addWidget(scroll, 1)
+        row.addWidget(scroll, 3)
         row.addStretch(1)
         outer.addLayout(row, 1)
 
@@ -225,6 +446,9 @@ class MainWindow(QMainWindow):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setMinimumWidth(600)
+        scroll.setStyleSheet(
+            "QScrollArea, QScrollArea > QWidget { background: #ffffff; border: none; }"
+        )
         left = QWidget()
         lay = QVBoxLayout(left)
         scroll.setWidget(left)

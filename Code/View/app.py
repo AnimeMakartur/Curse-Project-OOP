@@ -123,7 +123,7 @@ def _displayReachable():
 def runGui(dbPath=None):
     from PyQt6.QtWidgets import QApplication
 
-    from main_window import MainWindow
+    from main_window import AppStyleSheet, MainWindow
 
     # Headless-fallback актуальний лише на Linux/X11: якщо дисплей не задано/недоступний —
     # не падаємо з "could not connect to display", а переходимо в offscreen із попередженням.
@@ -143,6 +143,7 @@ def runGui(dbPath=None):
 
     app = QApplication(sys.argv)
     app.setApplicationName("TravelSystem")
+    app.setStyleSheet(AppStyleSheet)
     window = MainWindow(dbPath=dbPath)
     window.show()
     return app.exec()
