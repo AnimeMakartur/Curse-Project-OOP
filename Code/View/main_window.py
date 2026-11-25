@@ -387,7 +387,7 @@ class MainWindow(QMainWindow):
 
         gb = self._group("Tourist Profile", QFormLayout)
         form = gb.layout()
-        self.editName = QLineEdit("Турист")
+        self.editName = QLineEdit("Tourist")
         form.addRow("Name:", self.editName)
         self.spinBudget = self._spin(QDoubleSpinBox, 0, 10_000_000, 20, " €")
         form.addRow("Budget:", self.spinBudget)
@@ -714,7 +714,7 @@ class MainWindow(QMainWindow):
             f"{len(self.cities)} cities, {self.client.catalogSize()} destinations, {self.client.routesCount()} graph edges"
         )
         self.statusBar().showMessage(
-            f"Database loaded automatically: {self.dbPath} — заповніть профіль туриста"
+            f"Database loaded automatically: {self.dbPath} — fill in the tourist profile"
         )
         self.stack.setCurrentIndex(0)
 
@@ -725,10 +725,10 @@ class MainWindow(QMainWindow):
         if not self._requireClient():
             return
         if not self.editName.text().strip():
-            self._showError("Профіль не заповнено", "Input your name")
+            self._showError("Profile not filled", "Input your name")
             return
         if not self._selectedTags():
-            self._showError("Профіль не заповнено", "Chose tags, min one required")
+            self._showError("Profile not filled", "Chose tags, min one required")
             return
         try:
             self._applyProfile()
@@ -741,12 +741,12 @@ class MainWindow(QMainWindow):
             self.onCityChanged(0)
         p = self.client.getProfile()
         self.statusBar().showMessage(
-            f"Профіль застосовано: {p.get('name')}, теги: {', '.join(p.get('interests', []))}. Chosen city: {self.comboCity.currentText()}."
+            f"Profile applied: {p.get('name')}, tags: {', '.join(p.get('interests', []))}. Chosen city: {self.comboCity.currentText()}."
         )
 
     def onBackToProfile(self):
         self.stack.setCurrentIndex(0)
-        self.statusBar().showMessage("Редагування профілю туриста")
+        self.statusBar().showMessage("Changed to profile editing")
 
     def onCityChanged(self, _index):
         self._updateCityDesc()
