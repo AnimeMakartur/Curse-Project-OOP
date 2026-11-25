@@ -77,12 +77,16 @@ def runConsole(dbPath):
         if len(filtered) >= 2:
             a, b = filtered[0]["id"], filtered[-1]["id"]
             path = client.findShortestPath(a, b)
-            print(f"\nНайкоротший шлях {a} -> {b} (Дейкстра, деталізація по лініях):")
+            print(
+                f"\nНайкоротший шлях {client.destinationName(a)} -> {client.destinationName(b)}"
+                " (Дейкстра, деталізація по лініях):"
+            )
             for s in path:
                 lane = s["lane"]
                 name = f" «{lane['routeName']}»" if lane.get("routeName") else ""
                 print(
-                    f"  {s['fromId']} -> {s['toId']}: {s['distanceKm']} км, "
+                    f"  {s.get('fromName', s['fromId'])} -> {s.get('toName', s['toId'])}: "
+                    f"{s['distanceKm']} км, "
                     f"{s['timeHours']:.3f} год, {s['cost']} EUR — "
                     f"{lane['transportUkr']}{name}"
                 )

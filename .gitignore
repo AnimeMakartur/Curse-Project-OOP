@@ -16,7 +16,7 @@ JSON CS2/*.json
 
 _docx_full.txt
 all_code.txt
-# Build artifacts & Python cache
+# Build artifacts & Python cacheмаршруту 
 Code/Controllers/*.dll
 Code/Controllers/*.lib
 Code/Controllers/*.exp

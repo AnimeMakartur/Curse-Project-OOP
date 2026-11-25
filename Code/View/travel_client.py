@@ -42,6 +42,7 @@ class TravelClient:
         self._handle = None
         self._bind()
         self._handle = self._lib.ts_create()
+        self._namesById = {}  # id вершини графа -> назва об'єкта (для маршрутів замість ID)
 
     # --- налаштування сигнатур C API ---
     def _bind(self):
@@ -116,7 +117,20 @@ class TravelClient:
                 "Failed to load the database: %s (%s)"
                 % (filename, err.decode("utf-8") if err else "?")
             )
+        self._namesById = {d["id"]: d.get("name", "") for d in self.getCatalog(-1)}
         return True
+
+    def destinationName(self, destId):
+        """Назва об'єкта за id вершини графа (fallback — 'id=N', якщо об'єкта немає в каталозі)."""
+        name = self._namesById.get(int(destId))
+        return name if name else f"id={destId}"
+
+    def _enrichPath(self, steps):
+        """Додає до кожного кроку маршруту назви вершин (fromName/toName) замість голих ID."""
+        for s in steps:
+            s["fromName"] = self.destinationName(s["fromId"])
+            s["toName"] = self.destinationName(s["toId"])
+        return steps
 
     def getCities(self):
         """Список міст/агломерацій із завантаженої бази: [{id, name, region, description}]."""
@@ -170,26 +184,39 @@ class TravelClient:
         return self._takeJson(self._lib.ts_sorted_destinations(self._handle)) or []
 
     def findShortestPath(self, fromId, toId, budget=None):
-        """Оптимальний маршрут алгоритмом Дейкстри (UC8) з деталізацією ліній транспорту."""
+        """Оптимальний маршрут алгоритмом Дейкстри (UC8) з деталізацією ліній транспорту.
+
+        Кожен крок додатково містить fromName/toName — назви об'єктів замість ID вершин.
+        """
         if budget is None:
-            return (
+            steps = (
                 self._takeJson(
                     self._lib.ts_find_shortest_path(self._handle, int(fromId), int(toId))
                 )
                 or []
             )
-        return (
-            self._takeJson(
-                self._lib.ts_find_shortest_path_budget(
-                    self._handle, int(fromId), int(toId), float(budget)
+        else:
+            steps = (
+                self._takeJson(
+                    self._lib.ts_find_shortest_path_budget(
+                        self._handle, int(fromId), int(toId), float(budget)
+                    )
                 )
+                or []
             )
-            or []
-        )
+        return self._enrichPath(steps)
 
     def generatePlan(self):
-        """Згенерувати персоналізований туристичний план (UC2)."""
-        return self._takeJson(self._lib.ts_generate_plan(self._handle))
+        """Згенерувати персоналізований туристичний план (UC2).
+
+        Трансфери всередині плану збагачені назвами об'єктів (fromName/toName).
+        """
+        plan = self._takeJson(self._lib.ts_generate_plan(self._handle))
+        if plan:
+            for day in plan.get("days", []):
+                for item in day.get("items", []):
+                    self._enrichPath(item.get("transfers", []))
+        return plan
 
     def close(self):
         if self._handle is not None:

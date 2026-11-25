@@ -481,9 +481,9 @@ class MainWindow(QMainWindow):
         act.addWidget(self._btn("Sort by relevance", self.onSorted))
         act.addWidget(self._btn("Generate personalized plan", self.onGenerate))
         pRow = QHBoxLayout()
-        pRow.addWidget(QLabel("to id:"))
-        self.spinTo = self._spin(QSpinBox, 0, 100000, 3)
-        pRow.addWidget(self.spinTo)
+        pRow.addWidget(QLabel("To:"))
+        self.comboTo = self._combo([])
+        pRow.addWidget(self.comboTo, 1)
         act.addLayout(pRow)
         bRow = QHBoxLayout()
         self.chkBudget = QCheckBox("Custom path budget:")
@@ -644,6 +644,20 @@ class MainWindow(QMainWindow):
             if hotels
             else "У базі немає готелів обраного міста (потрібен об'єкт із тегом hotel/accommodation) — шлях від готелю недоступний."
         )
+        self._fillEndPoints()
+
+    def _fillEndPoints(self):
+        """Список усіх об'єктів обраного міста для вибору кінцевої точки маршруту (за назвами)."""
+        self.comboTo.blockSignals(True)
+        self.comboTo.clear()
+        cityId = self._currentCityId()
+        dests = sorted(
+            (self.client.getCatalog(cityId) if cityId >= 0 and self.client else []),
+            key=lambda d: str(d.get("name", "")),
+        )
+        for d in dests:
+            self.comboTo.addItem(f"{d['name']} (id={d['id']})", d["id"])
+        self.comboTo.blockSignals(False)
 
     def _fillCatalogTable(self, rows):
         self.tableCatalog.setSortingEnabled(False)
@@ -750,8 +764,8 @@ class MainWindow(QMainWindow):
 
     def onStartChanged(self, _index):
         sid = self._currentStartId()
-        if sid >= 0:
-            self.statusBar().showMessage(f"Start point (hotel) id={sid}")
+        if sid >= 0 and self.client:
+            self.statusBar().showMessage(f"Start point: {self.client.destinationName(sid)}")
 
     def onShowCatalog(self):
         if not self._requireClient():
@@ -827,7 +841,7 @@ class MainWindow(QMainWindow):
                     QTreeWidgetItem(
                         node,
                         [
-                            f"→ transfer {t['fromId']} → {t['toId']}",
+                            f"→ transfer {t.get('fromName', t['fromId'])} → {t.get('toName', t['toId'])}",
                             f"{t['timeHours']:.3f}",
                             f"{t['cost']:g}",
                             f"{t['distanceKm']:g} km — {_fmtTransport(t.get('lane', {}))}",
@@ -874,20 +888,29 @@ class MainWindow(QMainWindow):
                 "Оберіть готель зі списку стартових точок обраного міста.",
             )
             return
-        b = self.spinTo.value()
+        b = self._comboId(self.comboTo)
+        if b < 0:
+            self._showError(
+                "Кінцева точка не обрана",
+                "Оберіть об'єкт зі списку «To» обраного міста.",
+            )
+            return
         budget = self.spinPathBudget.value() if self.chkBudget.isChecked() else None
         steps = self.client.findShortestPath(a, b, budget=budget)
+        nameA = self.client.destinationName(a)
+        nameB = self.client.destinationName(b)
         self.treePath.clear()
         tTime = tCost = 0.0
         if not steps:
             QTreeWidgetItem(
-                self.treePath, [f"No path {a} → {b} within the selected city", "", "", "", ""]
+                self.treePath,
+                [f"No path {nameA} → {nameB} within the selected city", "", "", "", ""],
             )
         for s in steps:
             QTreeWidgetItem(
                 self.treePath,
                 [
-                    f"{s['fromId']} → {s['toId']}",
+                    f"{s.get('fromName', s['fromId'])} → {s.get('toName', s['toId'])}",
                     f"{s['distanceKm']:g}",
                     f"{s['timeHours']:.3f}",
                     f"{s['cost']:g}",
