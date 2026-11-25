@@ -39,23 +39,27 @@ std::string Route::getRoadDescription() const {
     return result;
 }
 
-bool Route::hasAffordableLane(double remainingBudget) const {
+bool Route::hasAffordableLane(double remainingBudget, bool allowCar) const {
     if (lanes.empty())
         return true; // порожній набір = тротуар (безкоштовно)
     for (const Lane& lane : lanes) {
+        if (!allowCar && lane.type == LaneType::CarLane)
+            continue; // без власної машини автомобільна смуга недоступна
         if (lane.isAffordable(remainingBudget))
             return true;
     }
     return false;
 }
 
-Lane Route::chooseBestLane(double remainingBudget) const {
+Lane Route::chooseBestLane(double remainingBudget, bool allowCar) const {
     if (lanes.empty())
         return Lane(LaneType::Sidewalk);
 
     const Lane* best = nullptr;
     const Lane* cheapest = nullptr;
     for (const Lane& lane : lanes) {
+        if (!allowCar && lane.type == LaneType::CarLane)
+            continue; // без власної машини автомобільна смуга недоступна
         if (!cheapest || lane.cost < cheapest->cost)
             cheapest = &lane;
         if (!lane.isAffordable(remainingBudget))
@@ -68,12 +72,12 @@ Lane Route::chooseBestLane(double remainingBudget) const {
     return best ? *best : (cheapest ? *cheapest : Lane(LaneType::Sidewalk));
 }
 
-double Route::optimalTravelTimeHours(double remainingBudget) const {
-    return chooseBestLane(remainingBudget).travelTimeHours(distanceKm);
+double Route::optimalTravelTimeHours(double remainingBudget, bool allowCar) const {
+    return chooseBestLane(remainingBudget, allowCar).travelTimeHours(distanceKm);
 }
 
-double Route::optimalCost(double remainingBudget) const {
-    return chooseBestLane(remainingBudget).cost;
+double Route::optimalCost(double remainingBudget, bool allowCar) const {
+    return chooseBestLane(remainingBudget, allowCar).cost;
 }
 
 double Route::getTravelTime() const {

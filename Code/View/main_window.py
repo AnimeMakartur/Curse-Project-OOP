@@ -397,6 +397,9 @@ class MainWindow(QMainWindow):
         form.addRow("Trip duration (days):", self.spinDays)
         self.spinTime = self._spin(QDoubleSpinBox, 1, 24, 8, " h")
         form.addRow("Hours per day:", self.spinTime)
+        self.chkHasCar = QCheckBox("Has a car")
+        self.chkHasCar.setChecked(False)
+        form.addRow("Transport:", self.chkHasCar)
         lay.addWidget(gb)
 
         gbTags = self._group("Interests (tags)")
@@ -603,6 +606,7 @@ class MainWindow(QMainWindow):
             self.spinTime.value(),
             self._selectedTags(),
             cityId=self._currentCityId(),
+            hasCar=self.chkHasCar.isChecked(),
         )
 
     def _fillCities(self):
@@ -740,8 +744,9 @@ class MainWindow(QMainWindow):
             self.comboCity.setCurrentIndex(0)
             self.onCityChanged(0)
         p = self.client.getProfile()
+        carNote = "has a car (direct drives)" if p.get("hasCar") else "no car (walk/bike/transit)"
         self.statusBar().showMessage(
-            f"Profile applied: {p.get('name')}, tags: {', '.join(p.get('interests', []))}. Chosen city: {self.comboCity.currentText()}."
+            f"Profile applied: {p.get('name')}, tags: {', '.join(p.get('interests', []))}, {carNote}. Chosen city: {self.comboCity.currentText()}."
         )
 
     def onBackToProfile(self):

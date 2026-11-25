@@ -34,15 +34,17 @@ class Route {
     std::string getRoadDescription() const;        // людиночитний опис дороги
 
     // Чи є хоч одна смуга, що вписується в залишок бюджету.
-    bool hasAffordableLane(double remainingBudget) const;
+    // allowCar=false — смуга car_lane недоступна (у туриста немає машини).
+    bool hasAffordableLane(double remainingBudget, bool allowCar = true) const;
     // Оптимальна смуга/лінія: мінімальний сумарний час переміщення серед тих,
     // що вписуються в залишок бюджету туриста:
     //   t(u,v) = min_l ( distanceKm / (v_base * k_speed(l)) + t_wait(l) )
     // Якщо жодна платна лінія не доступна — береться найдешевша (зазвичай тротуар).
-    Lane chooseBestLane(double remainingBudget) const;
+    // allowCar=false — car_lane не розглядається.
+    Lane chooseBestLane(double remainingBudget, bool allowCar = true) const;
 
-    double optimalTravelTimeHours(double remainingBudget) const; // час найкращої смуги
-    double optimalCost(double remainingBudget) const; // вартість найкращої смуги
+    double optimalTravelTimeHours(double remainingBudget, bool allowCar = true) const; // час найкращої смуги
+    double optimalCost(double remainingBudget, bool allowCar = true) const; // вартість найкращої смуги
 
     // Сумісні гетери (без обмеження бюджету — найшвидша смуга).
     double getTravelTime() const;

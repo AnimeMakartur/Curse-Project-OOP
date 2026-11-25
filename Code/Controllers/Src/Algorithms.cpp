@@ -50,7 +50,7 @@ void sortByRelevance(std::vector<TouristDestination*>& list) {
 }
 
 std::vector<PathStep> dijkstra(const std::vector<Route>& routes, int startId, int endId,
-                               double remainingBudget) {
+                               double remainingBudget, bool allowCar) {
     std::vector<PathStep> emptyPath;
     if (startId == endId)
         return emptyPath;
@@ -89,10 +89,10 @@ std::vector<PathStep> dijkstra(const std::vector<Route>& routes, int startId, in
         for (const auto& [v, edgeIndex] : it->second) {
             const Route& route = routes[edgeIndex];
             // Пропускаємо ребро, якщо жодна його смуга/лінія не вписується в бюджет
-            if (!route.hasAffordableLane(remainingBudget))
+            if (!route.hasAffordableLane(remainingBudget, allowCar))
                 continue;
             // Автоматичний вибір оптимальної лінії/смуги з мінімальним часом переходу
-            PathStep step(route, route.chooseBestLane(remainingBudget));
+            PathStep step(route, route.chooseBestLane(remainingBudget, allowCar));
             double w = step.timeHours; // вага ребра — мінімальний час переміщення
             // Релаксація: d[v] = min(d[v], d[u] + w(u, v))
             if (dist[u] + w < dist[v]) {
@@ -119,8 +119,9 @@ std::vector<PathStep> dijkstra(const std::vector<Route>& routes, int startId, in
     return path;
 }
 
-std::vector<PathStep> dijkstra(const std::vector<Route>& routes, int startId, int endId) {
-    return dijkstra(routes, startId, endId, std::numeric_limits<double>::infinity());
+std::vector<PathStep> dijkstra(const std::vector<Route>& routes, int startId, int endId,
+                               bool allowCar) {
+    return dijkstra(routes, startId, endId, std::numeric_limits<double>::infinity(), allowCar);
 }
 
 } // namespace algorithms

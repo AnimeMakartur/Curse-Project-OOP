@@ -70,6 +70,7 @@ class TravelClient:
             c_double,
             c_char_p,
             c_int,
+            c_int,
         ]
         lib.ts_set_target_city.restype = None
         lib.ts_set_target_city.argtypes = [c_void_p, c_int]
@@ -139,8 +140,13 @@ class TravelClient:
     def citiesCount(self):
         return self._lib.ts_cities_count(self._handle)
 
-    def setTourist(self, name, budget, isTotalBudget, days, dailyTimeLimit, interests, cityId=-1):
-        """Створити/редагувати профіль туриста (UC1, UC4, UC5) із обраним містом cityId."""
+    def setTourist(self, name, budget, isTotalBudget, days, dailyTimeLimit, interests, cityId=-1,
+                   hasCar=False):
+        """Створити/редагувати профіль туриста (UC1, UC4, UC5) із обраним містом cityId.
+
+        hasCar — чи є в туриста власна машина: тоді car_lane доступна в Дейкстрі,
+        а шлях на машині згортається в один прямий перегін між об'єктами.
+        """
         interestsCsv = ",".join(interests)
         self._lib.ts_set_tourist(
             self._handle,
@@ -152,6 +158,7 @@ class TravelClient:
             float(dailyTimeLimit),
             interestsCsv.encode("utf-8"),
             int(cityId),
+            1 if hasCar else 0,
         )
 
     def setTargetCity(self, cityId):

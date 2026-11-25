@@ -16,12 +16,13 @@ class Tourist {
     double dailyTimeLimit; // доступний час на один день (год)
     std::vector<std::string> interestTags;
     int targetCityId; // обране місто/агломерація (City::id); -1 — не обрано
+    bool hasCar;      // чи є в туриста власна машина (тоді car_lane доступна і їздить він напряму)
 
   public:
     Tourist();
     Tourist(int id, const std::string& name, double inputBudget, bool isTotalBudget, int tripDays,
             double dailyTimeLimit, const std::vector<std::string>& interestTags,
-            int targetCityId = -1);
+            int targetCityId = -1, bool hasCar = false);
 
     // Розрахунковий денний бюджет, формула (1.7):
     // Bday = Binput, якщо бюджет на день; Bday = Binput / Dtrip, якщо на всю подорож.
@@ -39,6 +40,7 @@ class Tourist {
     int getTripDays() const;
     double getDailyTimeLimit() const;
     int getTargetCityId() const;
+    bool getHasCar() const;
 
     void setName(const std::string& newName);
     void setBudget(double budget, bool isTotal);
@@ -46,6 +48,7 @@ class Tourist {
     void setDailyTimeLimit(double hours);
     void setInterests(const std::vector<std::string>& tags);
     void setTargetCityId(int cityId);
+    void setHasCar(bool car);
 };
 
 } // namespace travel

@@ -25,11 +25,13 @@ void sortByRelevance(std::vector<TouristDestination*>& list);
 // у залишок бюджету туриста:
 //   t(u,v) = min_{l ∈ lanes, cost(l) ≤ remainingBudget}
 //            ( distanceKm / (v_base·k_speed(l)) + t_wait(l) )
+// allowCar=false — смуги car_lane не розглядаються (у туриста немає власної машини).
 // Повертає деталізовані кроки маршруту (PathStep із обраною смугою/лінією),
 // або порожній вектор, якщо шляху немає.
 std::vector<PathStep> dijkstra(const std::vector<Route>& routes, int startId, int endId,
-                               double remainingBudget);
+                               double remainingBudget, bool allowCar = true);
 // Перевантаження без бюджетного обмеження (budget = +inf): найшвидша лінія на кожному ребрі.
-std::vector<PathStep> dijkstra(const std::vector<Route>& routes, int startId, int endId);
+std::vector<PathStep> dijkstra(const std::vector<Route>& routes, int startId, int endId,
+                               bool allowCar = true);
 } // namespace algorithms
 } // namespace travel

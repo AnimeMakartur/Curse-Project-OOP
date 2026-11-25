@@ -43,6 +43,24 @@ std::vector<Route> TravelSystem::routesForCity(int cityId) const {
     }
     return result;
 }
+std::vector<PathStep> TravelSystem::collapseCarPath(const std::vector<PathStep>& path, int startId,
+                                                    int endId, int cityId) {
+    if (path.empty())
+        return path;
+    for (const PathStep& s : path) {
+        if (s.lane.type != LaneType::CarLane)
+            return path; // шлях не повністю автомобільний — деталізацію лишаємо
+    }
+    // Власна машина: турист їде напряму від об'єкта до об'єкта, без ланцюжка перегонів
+    double totalKm = 0.0;
+    for (const PathStep& s : path)
+        totalKm += s.route.getDistance();
+    Lane car(LaneType::CarLane, "Direct drive");
+    Route direct(cityId, startId, endId, totalKm, {car});
+    std::vector<PathStep> out;
+    out.push_back(PathStep(direct, car));
+    return out;
+}
 std::vector<TouristDestination*> TravelSystem::getCatalog(int cityId) const {
     return catalogForCity(cityId);
 }
@@ -109,7 +127,12 @@ TravelPlan TravelSystem::generatePersonalizedPlan() {
             if (currentId != -1) {
                 // Дейкстра лише по ребрах обраного міста, з поточним залишком бюджету:
                 // на кожному ребрі автоматично обирається найшвидша доступна лінія.
-                path = algorithms::dijkstra(cityRoutes, currentId, dest->getId(), budgetLeft);
+                // Без власної машини car_lane недоступна.
+                const bool allowCar = currentTourist.getHasCar();
+                path = algorithms::dijkstra(cityRoutes, currentId, dest->getId(), budgetLeft,
+                                            allowCar);
+                if (allowCar)
+                    path = collapseCarPath(path, currentId, dest->getId(), cityId);
                 if (path.empty())
                     continue; // вершина недосяжна — пропускаємо
                 for (const PathStep& step : path) {
@@ -141,11 +164,16 @@ TravelPlan TravelSystem::generatePersonalizedPlan() {
 }
 std::vector<PathStep> TravelSystem::findShortestPath(int startId, int endId) {
     double budget = hasTourist ? currentTourist.getDailyBudget() : 0.0;
-    return findShortestPath(startId, endId, activeCityId(), budget);
+    bool allowCar = hasTourist && currentTourist.getHasCar();
+    return findShortestPath(startId, endId, activeCityId(), budget, allowCar);
 }
 std::vector<PathStep> TravelSystem::findShortestPath(int startId, int endId, int cityId,
-                                                     double remainingBudget) {
-    return algorithms::dijkstra(routesForCity(cityId), startId, endId, remainingBudget);
+                                                     double remainingBudget, bool allowCar) {
+    std::vector<PathStep> path =
+        algorithms::dijkstra(routesForCity(cityId), startId, endId, remainingBudget, allowCar);
+    if (allowCar)
+        path = collapseCarPath(path, startId, endId, cityId);
+    return path;
 }
 const TravelPlan* TravelSystem::getCurrentPlan() const { return currentPlan; }
 size_t TravelSystem::getCatalogSize() const { return catalog.size(); }

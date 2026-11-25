@@ -4,14 +4,14 @@ namespace travel {
 
 Tourist::Tourist()
     : id(0), name(""), inputBudget(0.0), isTotalBudget(false), tripDays(1), dailyTimeLimit(8.0),
-      targetCityId(-1) {}
+      targetCityId(-1), hasCar(false) {}
 
 Tourist::Tourist(int id, const std::string& name, double inputBudget, bool isTotalBudget,
                  int tripDays, double dailyTimeLimit, const std::vector<std::string>& interestTags,
-                 int targetCityId)
+                 int targetCityId, bool hasCar)
     : id(id), name(name), inputBudget(inputBudget), isTotalBudget(isTotalBudget),
       tripDays(tripDays > 0 ? tripDays : 1), dailyTimeLimit(dailyTimeLimit),
-      interestTags(interestTags), targetCityId(targetCityId) {}
+      interestTags(interestTags), targetCityId(targetCityId), hasCar(hasCar) {}
 
 double Tourist::getDailyBudget() const {
     if (isTotalBudget) {
@@ -37,6 +37,7 @@ bool Tourist::getIsTotalBudget() const { return isTotalBudget; }
 int Tourist::getTripDays() const { return tripDays; }
 double Tourist::getDailyTimeLimit() const { return dailyTimeLimit; }
 int Tourist::getTargetCityId() const { return targetCityId; }
+bool Tourist::getHasCar() const { return hasCar; }
 
 void Tourist::setName(const std::string& newName) { name = newName; }
 
@@ -52,5 +53,7 @@ void Tourist::setDailyTimeLimit(double hours) { dailyTimeLimit = hours; }
 void Tourist::setInterests(const std::vector<std::string>& tags) { interestTags = tags; }
 
 void Tourist::setTargetCityId(int cityId) { targetCityId = cityId; }
+
+void Tourist::setHasCar(bool car) { hasCar = car; }
 
 } // namespace travel

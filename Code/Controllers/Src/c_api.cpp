@@ -231,13 +231,13 @@ TRAVEL_API char* ts_get_cities(void* handle) {
 
 TRAVEL_API void ts_set_tourist(void* handle, int id, const char* name, double budget,
                                int isTotalBudget, int days, double dailyTimeLimit,
-                               const char* interestsCsv, int targetCityId) {
+                               const char* interestsCsv, int targetCityId, int hasCar) {
     if (!handle)
         return;
     std::vector<std::string> tags =
         interestsCsv ? splitCsv(interestsCsv) : std::vector<std::string>();
     Tourist tourist(id, name ? name : "", budget, isTotalBudget != 0, days, dailyTimeLimit, tags,
-                    targetCityId);
+                    targetCityId, hasCar != 0);
     asSystem(handle)->setTouristProfile(tourist);
 }
 
@@ -263,6 +263,7 @@ TRAVEL_API char* ts_get_profile(void* handle) {
         << ",\"dailyBudget\":" << num(t.getDailyBudget())
         << ",\"totalBudget\":" << num(t.getTotalBudget())
         << ",\"targetCityId\":" << t.getTargetCityId()
+        << ",\"hasCar\":" << (t.getHasCar() ? "true" : "false")
         << ",\"interests\":" << tagsToJson(t.getInterests()) << "}";
     return toCString(out.str());
 }

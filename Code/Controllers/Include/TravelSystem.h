@@ -33,6 +33,10 @@ class TravelSystem {
     // Допоміжні вибірки в межах міста (cityId < 0 — усі міста)
     std::vector<TouristDestination*> catalogForCity(int cityId) const;
     std::vector<Route> routesForCity(int cityId) const;
+    // Якщо весь шлях — car_lane (турист із машиною), згортає його в один прямий
+    // перегін startId -> endId без проміжних вершин-будівель; інакше повертає як є.
+    static std::vector<PathStep> collapseCarPath(const std::vector<PathStep>& path, int startId,
+                                                 int endId, int cityId);
 
   public:
     TravelSystem();
@@ -64,9 +68,9 @@ class TravelSystem {
     // Оптимальний маршрут (Дейкстра) між двома вершинами графа ОБРАНОГО міста
     // з урахуванням денного бюджету туриста
     std::vector<PathStep> findShortestPath(int startId, int endId);
-    // Явна версія: задане місто та залишок бюджету
+    // Явна версія: задане місто, залишок бюджету та дозвіл на car_lane (чи є машина)
     std::vector<PathStep> findShortestPath(int startId, int endId, int cityId,
-                                           double remainingBudget);
+                                           double remainingBudget, bool allowCar = true);
     const TravelPlan* getCurrentPlan() const;
     size_t getCatalogSize() const;
     size_t getRoutesCount() const;
