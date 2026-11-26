@@ -56,7 +56,12 @@ class TravelClient:
     """Тонкий клієнт C API ядра TravelSystem (Controllers/Src/c_api.cpp)."""
 
     def __init__(self, libPath=None):
-        self._lib = ctypes.CDLL(findLibrary(libPath))
+        libPath = findLibrary(libPath)
+        if os.name == "nt" and hasattr(os, "add_dll_directory"):
+            # Папка з самою dll потрапляє у пошук залежностей LoadLibrary:
+            # якщо поруч із travelcore.dll лежать її залежності — знайдуться.
+            os.add_dll_directory(os.path.dirname(os.path.abspath(libPath)))
+        self._lib = ctypes.CDLL(libPath)
         self._handle = None
         self._bind()
         self._handle = self._lib.ts_create()

@@ -560,7 +560,7 @@ class MainWindow(QMainWindow):
     def _connectClient(self):
         try:
             self.client = TravelClient()
-        except FileNotFoundError as e:
+        except OSError as e:  # FileNotFoundError + PyInstallerImportError(підклас OSError): dll знайдено, але не вантажиться (напр. немає залежностей)
             self.client = None
             QMessageBox.critical(self, "Core library missing", str(e))
             self.statusBar().showMessage(str(e))

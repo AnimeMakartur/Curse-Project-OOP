@@ -16,6 +16,7 @@ SOURCES=(
 )
 
 "$CXX" -std=c++17 -O2 -Wall -Wextra -fPIC -shared \
+    -static-libgcc -static-libstdc++ \
     -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH \
     -I Models/Include -I DataBase -I Controllers/Include \
     "${SOURCES[@]}" \
