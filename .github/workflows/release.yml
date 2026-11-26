@@ -44,10 +44,13 @@ jobs:
       - name: Compose app folder
         shell: cmd
         run: |
-          mkdir dist\TravelSystemApp\View dist\TravelSystemApp\Controllers dist\TravelSystemApp\DataBase
+          REM View НЕ створюємо заздалегідь: інакше move покладе TravelSystem ВСЕРЕДИНУ View,
+          REM а run.bat/lnk чекають exe прямо в TravelSystemApp\View\TravelSystem.exe
+          mkdir dist\TravelSystemApp\Controllers dist\TravelSystemApp\DataBase
           move dist\TravelSystem dist\TravelSystemApp\View
           copy Code\Controllers\travelcore.dll dist\TravelSystemApp\Controllers\
           copy Code\DataBase\travel_db.json dist\TravelSystemApp\DataBase\
+          xcopy Code\View\images dist\TravelSystemApp\View\images\ /E /I /Y
 
       # 5. Файли запуску ЛЕЖАТЬ ЗОВНІ папки програми (на рівень вище, поруч з нею).
       #    Шляхи у них ВІДНОСНІ, тому після розпакування архіву будь-де все працює.

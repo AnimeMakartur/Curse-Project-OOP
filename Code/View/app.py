@@ -11,11 +11,9 @@ import json
 import os
 import sys
 
-from travel_client import TravelClient
+from travel_client import TravelClient, appBaseDir
 
-DefaultDb = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "..", "DataBase", "travel_db.json"
-)
+DefaultDb = os.path.join(appBaseDir(), "..", "DataBase", "travel_db.json")
 
 
 def runConsole(dbPath):

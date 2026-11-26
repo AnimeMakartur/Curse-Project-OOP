@@ -5,14 +5,14 @@ import os
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QPainter, QPixmap
 from PyQt6.QtWidgets import *
-from travel_client import TravelClient
+from travel_client import TravelClient, appBaseDir
 
 DefaultDb = os.path.normpath(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "DataBase", "travel_db.json")
+    os.path.join(appBaseDir(), "..", "DataBase", "travel_db.json")
 )
 
-# Задник сторінки створення профілю туриста — фото з Code/View/images
-_ViewDir = os.path.dirname(os.path.abspath(__file__))
+# Задник сторінки створення профілю туриста — фото з View/images
+_ViewDir = appBaseDir()
 ProfileBgImage = os.path.normpath(
     os.path.join(_ViewDir, "images", "istockphoto-1477997501-1024x1024.jpg")
 )

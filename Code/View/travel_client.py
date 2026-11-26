@@ -8,10 +8,24 @@
 import ctypes
 import json
 import os
+import sys
 from ctypes import c_char_p, c_double, c_int, c_void_p
 
 # Можливі місця розташування зібраної бібліотеки (за пріоритетом)
 _CandidateNames = ("travelcore.dll", "libtravelcore.so", "libtravelcore.dylib")
+
+
+def appBaseDir():
+    """Базова папка застосунку.
+
+    У зібраному PyInstaller-exe (sys.frozen) __file__ модулів вказує на тимчасову
+    папку _MEIPASS, тому базою вважаємо папку самого exe (sys.executable) — відносно
+    неї у папці релізу лежать ../Controllers і ../DataBase. У режимі запуску з сирців
+    (python app.py) — папка цього файлу (Code/View).
+    """
+    if getattr(sys, "frozen", False):
+        return os.path.dirname(os.path.abspath(sys.executable))
+    return os.path.dirname(os.path.abspath(__file__))
 
 
 def findLibrary(explicitPath=None):
@@ -21,8 +35,12 @@ def findLibrary(explicitPath=None):
     envPath = os.environ.get("TRAVELCORE_LIB")
     if envPath and os.path.exists(envPath):
         return envPath
-    here = os.path.dirname(os.path.abspath(__file__))
-    for base in (os.path.join(here, "..", "Controllers"), here, os.getcwd()):
+    here = appBaseDir()
+    bases = [os.path.join(here, "..", "Controllers"), here, os.getcwd()]
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        bases.insert(1, meipass)  # dll, запакована всередину exe через --add-binary
+    for base in bases:
         for name in _CandidateNames:
             candidate = os.path.join(base, name)
             if os.path.exists(candidate):
