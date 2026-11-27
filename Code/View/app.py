@@ -1,10 +1,13 @@
-"""Точка входу TravelSystem (шар представлення, Python + PyQt6).
+"""Шар представлення TravelSystem (Python + PyQt6).
 
-Запуск GUI:        python app.py [шлях_до_db.json]
-Консольний режим:  python app.py --console [шлях_до_db.json]
+Програму запускають з головної точки входу Code/Main.py:
+    python Main.py [шлях_до_db.json]          — GUI
+    python Main.py --console [шлях_до_db.json] — консольний режим
+Цей модуль (app.py) можна запускати й напряму з папки View — поводінка та ж.
 
 База даних завантажується автоматично при старті зі шляху за замовчуванням
-(../DataBase/travel_db.json) — без кнопок і діалогів вибору файла.
+(../DataBase/travel_db.json) — без кнопок і діалогів вибору файла. JSON бази
+парсить готовий парсер Python (стандартний модуль json, див. db_loader.py).
 """
 
 import json

@@ -4,9 +4,12 @@ on:
   push:
     tags:
       - "v*" # реліз збирається автоматично при пуші тега v1.0.0, v1.1.0, ...
+    branches:
+      - master # .exe також збирається на кожному пушу в master (артефакт у вкладці Actions)
+  workflow_dispatch: # ручний запуск з вкладки Actions
 
 permissions:
-  contents: write # дозвіл створювати Release
+  contents: write # дозвіл створювати Release (лише для тегів v*)
 
 jobs:
   windows:
@@ -31,13 +34,16 @@ jobs:
       - name: Install Python deps
         run: pip install pyinstaller PyQt6
 
-      # 3. Збираємо GUI у папку (onedir, без консолі)
-      - name: Package GUI with PyInstaller
+      # 3. Збираємо .exe у папку (onedir, без консолі) з головної точки входу Code\Main.py.
+      #    --paths Code\View — щоб PyInstaller знайшов модулі представлення
+      #    (app.py, main_window.py, travel_client.py, db_loader.py) і запакував їх.
+      - name: Package app with PyInstaller (entry: Code\Main.py)
         run: |
           pyinstaller --noconfirm --clean --onedir --windowed `
+            --paths Code\View `
             --name TravelSystem `
             --distpath dist --workpath .pybuild --specpath .pybuild `
-            Code\View\app.py
+            Code\Main.py
 
       # 4. Складаємо папку апки: View/ (exe) + Controllers/ (dll) + DataBase/ (json)
       #    так, щоб відносні шляхи ../Controllers і ../DataBase з app.py знаходились
@@ -80,8 +86,17 @@ jobs:
       - name: Zip
         run: powershell -NoProfile -Command "Compress-Archive -Path dist\* -DestinationPath TravelSystemApp-win.zip -Force"
 
-      # 7. Публікуємо Release з цим zip автоматично
-      - uses: softprops/action-gh-release@v2
+      # 7. Завжди прикріплюємо zip із .exe до артефактів збірки (завантажити можна зі вкладки Actions)
+      - name: Upload .exe artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TravelSystemApp-win
+          path: TravelSystemApp-win.zip
+
+      # 8. Release з цим zip публікується автоматично лише при пуші тега v*
+      - name: Publish Release (tags only)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
         with:
           files: TravelSystemApp-win.zip
           generate_release_notes: true

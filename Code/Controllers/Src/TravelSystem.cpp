@@ -1,21 +1,38 @@
 #include "TravelSystem.h"
 
-#include "../DataBase/DataLoader.h"
-
 #include "Algorithms.h"
 
 namespace travel {
 TravelSystem::TravelSystem() : currentPlan(nullptr), hasTourist(false) {}
 TravelSystem::~TravelSystem() {
-    DataLoader::clearCatalog(catalog);
+    for (TouristDestination* dest : catalog)
+        delete dest;
     delete currentPlan;
 }
-bool TravelSystem::loadData(const std::string& filename, std::string& error) {
+void TravelSystem::clearData() {
     cities.clear();
-    bool ok = DataLoader::load(filename, cities, catalog, routes, error);
+    routes.clear();
+    for (TouristDestination* dest : catalog)
+        delete dest;
+    catalog.clear();
     delete currentPlan;
     currentPlan = nullptr;
-    return ok;
+}
+void TravelSystem::addCity(const City& city) { cities.push_back(city); }
+void TravelSystem::addDestination(TouristDestination* dest) {
+    if (dest)
+        catalog.push_back(dest);
+}
+size_t TravelSystem::addRoute(const Route& route) {
+    routes.push_back(route);
+    return routes.size() - 1;
+}
+void TravelSystem::addLane(size_t routeIndex, const Lane& lane) {
+    if (routeIndex >= routes.size())
+        return;
+    std::vector<Lane> lanes = routes[routeIndex].getLanes();
+    lanes.push_back(lane);
+    routes[routeIndex].setLanes(lanes);
 }
 const std::vector<City>& TravelSystem::getCities() const { return cities; }
 void TravelSystem::setTouristProfile(const Tourist& t) {

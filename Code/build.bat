@@ -5,13 +5,13 @@ REM Порядок пошуку компілятора: g++ (MinGW/MSYS2) -> cla
 REM Прапорець --tests додатково збирає Tests\.build\smoke_test.exe.
 cd /d "%~dp0"
 
-set "SOURCES=Models\Src\City.cpp Models\Src\Lane.cpp Models\Src\PathStep.cpp Models\Src\Tourist.cpp Models\Src\TouristDestination.cpp Models\Src\Attraction.cpp Models\Src\Museum.cpp Models\Src\Route.cpp Models\Src\TravelPlan.cpp DataBase\DataLoader.cpp Controllers\Src\Algorithms.cpp Controllers\Src\TravelSystem.cpp Controllers\Src\c_api.cpp"
+set "SOURCES=Models\Src\City.cpp Models\Src\Lane.cpp Models\Src\PathStep.cpp Models\Src\Tourist.cpp Models\Src\TouristDestination.cpp Models\Src\Attraction.cpp Models\Src\Museum.cpp Models\Src\Route.cpp Models\Src\TravelPlan.cpp Controllers\Src\Algorithms.cpp Controllers\Src\TravelSystem.cpp Controllers\Src\c_api.cpp"
 
 REM -static (g++/clang++) та /MT (cl): лінкуємо libgcc/libstdc++/winpthread ВСЕРЕДИНУ dll,
 REM щоб на цільовій машині не бракувало libstdc++-6.dll, libgcc_s_seh-1.dll, libwinpthread-1.dll.
 where g++ >nul 2>nul
 if %errorlevel%==0 (
-    g++ -std=c++17 -O2 -Wall -Wextra -shared -static -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -I Models\Include -I DataBase -I Controllers\Include ^
+    g++ -std=c++17 -O2 -Wall -Wextra -shared -static -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -I Models\Include -I Controllers\Include ^
         %SOURCES% ^
         -o Controllers\travelcore.dll
     goto :tests
@@ -19,7 +19,7 @@ if %errorlevel%==0 (
 
 where clang++ >nul 2>nul
 if %errorlevel%==0 (
-    clang++ -std=c++17 -O2 -Wall -Wextra -shared -static -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -I Models\Include -I DataBase -I Controllers\Include ^
+    clang++ -std=c++17 -O2 -Wall -Wextra -shared -static -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -I Models\Include -I Controllers\Include ^
         %SOURCES% ^
         -o Controllers\travelcore.dll
     goto :tests
@@ -29,7 +29,7 @@ REM Fallback: MSVC (Visual Studio Build Tools) через vcvarsall + cl /LD
 for %%V in ("C:\Program Files\Microsoft Visual Studio\2022\BuildTools" "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools" "C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools") do (
     if exist "%%~V\vc\Auxiliary\Build\vcvarsall.bat" (
         call "%%~V\vc\Auxiliary\Build\vcvarsall.bat" x64 >nul
-        cl /nologo /std:c++17 /O2 /W4 /EHsc /LD /MT /D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH /I Models /I DataBase /I Controllers ^
+        cl /nologo /std:c++17 /O2 /W4 /EHsc /LD /MT /D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH /I Models /I Controllers ^
             %SOURCES% ^
             /Fe:Controllers\travelcore.dll
         goto :tests
@@ -49,10 +49,10 @@ echo Готово: Controllers\travelcore.dll
 if /i "%~1"=="--tests" (
     if not exist Tests\.build mkdir Tests\.build
     where g++ >nul 2>nul && (
-        g++ -std=c++17 -O2 -Wall -Wextra -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -I Models\Include -I DataBase -I Controllers\Include ^
+        g++ -std=c++17 -O2 -Wall -Wextra -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -I Models\Include -I Controllers\Include ^
             Tests\smoke_test.cpp %SOURCES% -o Tests\.build\smoke_test.exe
     ) || (
-        clang++ -std=c++17 -O2 -Wall -Wextra -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -I Models\Include -I DataBase -I Controllers\Include ^
+        clang++ -std=c++17 -O2 -Wall -Wextra -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -I Models\Include -I Controllers\Include ^
             Tests\smoke_test.cpp %SOURCES% -o Tests\.build\smoke_test.exe
     )
     if %errorlevel%==0 echo Готово: Tests\.build\smoke_test.exe

@@ -45,8 +45,15 @@ class TravelSystem {
     TravelSystem(const TravelSystem&) = delete;
     TravelSystem& operator=(const TravelSystem&) = delete;
 
-    // Завантажує міста, каталог та графи маршрутів з JSON-файлу бази даних
-    bool loadData(const std::string& filename, std::string& error);
+    // Наповнення даними: JSON-файл бази читає Python-сторона готовим парсером
+    // (стандартний модуль json), а сюди сутності приходять уже розібраними
+    // через C API (ts_add_city / ts_add_attraction / ts_add_museum / ts_add_route
+    // / ts_add_lane). C++ ядро JSON не парсить.
+    void clearData();                                // очистити міста, каталог, графи, план
+    void addCity(const City& city);                  // додати місто/агломерацію
+    void addDestination(TouristDestination* dest);   // додати об'єкт (ядро володіє пам'яттю)
+    size_t addRoute(const Route& route);             // додати ребро графа, повертає його індекс
+    void addLane(size_t routeIndex, const Lane& lane); // додати смугу/лінію до ребра графа
     //
     const std::vector<City>& getCities() const;
 

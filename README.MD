@@ -10,15 +10,21 @@
 
 | Шар                                | Мова                 | Папка                                                                                | Призначення                                                                                                                   |
 | ---------------------------------- | -------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| Представлення (GUI)                | Python 3 + **PyQt6** | `Code/View`                                                                          | Віконний інтерфейс: вибір міста, профіль туриста, каталог (QTableWidget), план по днях, метрики; консольний режим `--console` |
+| Представлення (GUI)                | Python 3 + **PyQt6** | `Code/View`, точка входу `Code/Main.py`                                              | Віконний інтерфейс: вибір міста, профіль туриста, каталог (QTableWidget), план по днях, метрики; консольний режим `--console` |
 | Бізнес-логіка / обчислювальне ядро | **C++17**            | `Code/Controllers`, `Code/Models` (підпапки `Include/` для `.h` і `Src/` для `.cpp`) | Моделі предметної області, алгоритми (лінійний пошук, сортування, Дейкстра з чергою з пріоритетом), фасад `TravelSystem`      |
-| Дані та міжмовна взаємодія         | JSON + C API         | `Code/DataBase`, `Controllers/Src/c_api.cpp`                                         | Локальна база `travel_db.json` (міста + об'єкти + графи), завантажувач `DataLoader`, `extern "C"` API для ctypes              |
+| Дані та міжмовна взаємодія         | JSON + C API         | `Code/DataBase`, `Controllers/Src/c_api.cpp`                                         | Локальна база `travel_db.json` (міста + об'єкти + графи), `extern "C"` API для ctypes                                          |
 
 Міжмовна взаємодія: Python GUI викликає методи C++ ядра через динамічну
 бібліотеку (`travelcore.dll` / `libtravelcore.so`) засобами `ctypes`
 (`Code/View/travel_client.py`). Усі результати C++ повертає у вигляді JSON-рядків.
 
-Потік даних: `PyQt6 GUI → ctypes → C API (c_api.cpp) → TravelSystem → Algorithms/DataLoader → JSON DB`.
+**JSON парсить готовий парсер Python** — стандартний модуль `json`
+(`Code/View/db_loader.py`, `json.load` / `json.loads`). Власного C++ JSON-парсера
+в проєкті немає: C++ ядро отримує вже розібрані сутності через C API
+(`ts_add_city` / `ts_add_attraction` / `ts_add_museum` / `ts_add_route` / `ts_add_lane`).
+
+Потік даних: `Main.py → PyQt6 GUI → ctypes → C API (c_api.cpp) → TravelSystem → Algorithms`;
+база: `travel_db.json → json.load (Python) → ts_add_* → C++ ядро`.
 
 ## Модель даних: міста та мультимодальна транспортна мережа
 
@@ -44,6 +50,7 @@
 ├── Dockerfile / docker-compose.yml / requirements.txt   # розгортання в один клік
 ├── README.MD                                            # цей файл
 └── Code/
+    ├── Main.py                  # головна точка входу: python Main.py (GUI/--console); з нього ж збирається .exe
     ├── Models/                  # класи предметної області (ООП)
     │   ├── Include/             #   заголовки (.h)
     │   │   ├── City.h           #   місто/агломерація (id, назва, регіон, опис)
@@ -61,18 +68,19 @@
     │   └── Src/                 #   реалізація (.cpp): Algorithms.cpp, TravelSystem.cpp,
     │                            #   c_api.cpp — extern "C" API для ctypes (ts_get_cities, ts_set_tourist, ts_generate_plan, ...)
     ├── DataBase/
-    │   ├── JsonParser.h         #   мінімальний JSON-парсер без залежностей
-    │   ├── DataLoader.*         #   читання travel_db.json: міста, каталог, графи зі смугами
-    │   ├── travel_db.json       #   ПОРОЖНЯ шаблонна база (наповнюється окремо, див. schema.md)
+    │   ├── travel_db.json       #   локальна база (міста + об'єкти + графи); читається Python-ом (модуль json)
     │   └── schema.md            #   опис формату БД і приклад записів
     ├── View/
-    │   ├── travel_client.py     #   ctypes-обгортка над C API
+    │   ├── db_loader.py         #   JSON-парсер бази: готовий парсер stdlib (json.load)
+    │   ├── travel_client.py     #   ctypes-обгортка над C API (loadData передає дані через ts_add_*)
     │   ├── main_window.py       #   головне вікно PyQt6 (каталог, план, метрики, шлях)
-    │   └── app.py               #   точка входу: GUI (PyQt6) або --console
+    │   └── app.py               #   логіка запуску: GUI (PyQt6) або --console (з Main.py)
     ├── Tests/
-    │   ├── smoke_test.cpp       #   консольний тест ядра без GUI
-    │   └── sample_db.json       #   демо-база з двома містами для smoke-тесту
+    │   ├── smoke_test.cpp       #   консольний тест ядра без GUI і без JSON (демо-дані в коді)
+    │   └── sample_db.json       #   демо-база з двома містами для Python-режиму --console
     ├── build.bat                #   збірка DLL (Windows: g++ / clang++ / MSVC cl), прапорець --tests
+    ├── run.bat                  #   запуск програми: python Main.py (GUI/--console, --build)
+    ├── test.bat                 #   запуск smoke-тестів ядра
     └── build.sh                 #   збірка .so (Linux/macOS: g++ / clang++), прапорець --tests
 ```
 
@@ -80,7 +88,8 @@
 
 - `City` — місто/агломерація: `id`, `name`, `region`, `description`.
 - `Tourist` — `targetCityId`, `getDailyBudget()` (формула 1.7), `getTotalBudget()` (1.8), `getInterests()`, `updateProfile(...)`.
-- `TravelSystem` — фасад: `loadData` (міста + каталог + графи), `getCities`, `setTouristProfile`,
+- `TravelSystem` — фасад: наповнення даними через `clearData`/`addCity`/`addDestination`/`addRoute`/`addLane`
+  (JSON читає Python), `getCities`, `setTouristProfile`,
   `filterDestinations` (лінійний пошук **за targetCityId**), `sortDestinations` (релевантність, 1.4),
   `generatePersonalizedPlan`, `findShortestPath` (Дейкстра з бюджетом і вибором лінії).
 - `TouristDestination` (abstract) — `cityId`, `isOpen`, поліморфні `calculateRelevance`, `getDetails`, `getType`.
@@ -107,15 +116,14 @@ Windows (з кореня проєкту):
 
 ```bat
 Code\build.bat            REM або Code\build.bat --tests — ще й smoke-тест
-cd Code\View
-python app.py              REM GUI (потрібен pip install -r ..\..\requirements.txt)
+Code\run.bat              REM або вручну: cd Code && python Main.py   (GUI, потрібен pip install PyQt6)
 ```
 
 Linux/macOS:
 
 ```bash
 cd Code && chmod +x build.sh && ./build.sh        # або ./build.sh --tests
-cd View && python app.py
+python Main.py                                     # GUI
 ```
 
 → з'явиться `Code/Controllers/travelcore.dll` (Windows) або `libtravelcore.so` (Linux/macOS).
@@ -123,21 +131,31 @@ cd View && python app.py
 ### 3. Консольний режим (без GUI)
 
 ```bat
-cd Code\View
-python app.py --console ..\DataBase\travel_db.json
-REM або з демо-базою:  python app.py --console ..\Tests\sample_db.json
+cd Code
+python Main.py --console DataBase\travel_db.json
+REM або з демо-базою:  python Main.py --console Tests\sample_db.json
 ```
 
-### 4. C++ smoke-тест (без Python)
+### 4. C++ smoke-тест (без Python і без JSON)
+
+Демо-дані задані прямо в коді тесту (C++ ядро JSON не парсить):
 
 ```bat
 cd Code\Tests
-g++ -std=c++17 -Wall -Wextra -I ..\Models\Include -I ..\DataBase -I ..\Controllers\Include smoke_test.cpp ..\Models\Src\*.cpp ..\DataBase\DataLoader.cpp ..\Controllers\Src\Algorithms.cpp ..\Controllers\Src\TravelSystem.cpp -o smoke_test
-smoke_test sample_db.json
-REM або одразу зі скриптом збірки: Code\build.bat --tests  /  ./build.sh --tests
+g++ -std=c++17 -Wall -Wextra -I ..\Models\Include -I ..\Controllers\Include smoke_test.cpp ..\Models\Src\*.cpp ..\Controllers\Src\Algorithms.cpp ..\Controllers\Src\TravelSystem.cpp -o smoke_test
+smoke_test
+REM або одразу зі скриптом збірки: Code\build.bat --tests / Code\test.bat  /  ./build.sh --tests
 ```
 
-### 5. Наповнення бази даних
+### 5. Збірка .exe через GitHub Actions
+
+Workflow `.github/workflows/release.yml` збирає Windows-.exe з точки входу
+`Code/Main.py` (PyInstaller, `--windowed`) на кожному пушу в `master` і вручну
+(`workflow_dispatch`): zip `TravelSystemApp-win.zip` прикріплюється до артефактів
+збірки у вкладці Actions. При пуші тега `v*` той самий zip автоматично
+публікується як GitHub Release.
+
+### 6. Наповнення бази даних
 
 `Code/DataBase/travel_db.json` у репозиторії — порожній шаблон
 (`{"cities": [], "destinations": [], "routes": []}`). Формат файлу та приклад

@@ -1,22 +1,20 @@
 @echo off
 chcp 65001 >nul
 REM Запуск smoke-тестів ядра C++ (Tests\.build\smoke_test.exe).
+REM Тест не читає JSON-файл бази (C++ ядро не парсить JSON): демо-дані задані
+REM у коді тесту, а JSON-бази (Tests\sample_db.json, DataBase\travel_db.json)
+REM перевіряються Python-режимом: python Main.py --console Tests\sample_db.json
 REM Використання:
-REM   test.bat                  — запуск тестів на демо-базі Tests\sample_db.json
-REM   test.bat <файл_бд.json>   — запуск тестів на вказаній базі
+REM   test.bat                  — запуск тестів
 REM   test.bat --build          — спочатку перезібрати (build.bat --tests), потім тести
-REM   test.bat --build <бд.json>— перезібрати і запустити на вказаній базі
 cd /d "%~dp0"
 
-set "DB=Tests\sample_db.json"
 set "NEED_BUILD=0"
 
 :parse_args
 if /i "%~1"=="" goto :args_done
 if /i "%~1"=="--build" (
     set "NEED_BUILD=1"
-) else (
-    set "DB=%~1"
 )
 shift
 goto :parse_args
@@ -41,15 +39,9 @@ if %NEED_BUILD%==1 (
     )
 )
 
-if not exist "%DB%" (
-    echo Помилка: файл бази "%DB%" не знайдено.
-    exit /b 1
-)
-
 echo === Запуск smoke-тесту ===
-echo База: %DB%
 echo.
-Tests\.build\smoke_test.exe "%DB%"
+Tests\.build\smoke_test.exe
 set "RC=%errorlevel%"
 echo.
 if %RC%==0 (

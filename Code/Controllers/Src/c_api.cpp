@@ -1,6 +1,12 @@
 // C API поверх ядра TravelSystem — точка входу для Python GUI (ctypes).
 // Рядки, що повертаються, виділяються у купі; Python має звільнити їх через ts_free_string.
-// Усі результати повертаються у вигляді JSON-рядків (UTF-8).
+// Усі результати повертаються у вигляді JSON-рядків (UTF-8), які Python розбирає
+// готовим парсером (стандартний модуль json).
+//
+// JSON-файл бази даних (travel_db.json) C++ НЕ парсить: його читає Python-сторона
+// стандартним json.load, а сюди дані потрапляють уже розібраними через
+// ts_clear_data / ts_add_city / ts_add_attraction / ts_add_museum / ts_add_route /
+// ts_add_lane / ts_lane_defaults.
 
 #include <cstdio>
 #include <cstring>
@@ -8,7 +14,9 @@
 #include <string>
 #include <vector>
 
+#include "Attraction.h"
 #include "City.h"
+#include "Museum.h"
 #include "PathStep.h"
 #include "Tourist.h"
 #include "TouristDestination.h"
@@ -24,8 +32,6 @@
 using namespace travel;
 
 namespace {
-
-std::string g_lastError; // остання помилка завантаження БД (для ts_last_error)
 
 std::string escapeJson(const std::string& s) {
     std::string out;
@@ -198,18 +204,81 @@ TRAVEL_API void* ts_create() { return new TravelSystem(); }
 
 TRAVEL_API void ts_destroy(void* handle) { delete asSystem(handle); }
 
-TRAVEL_API int ts_load_data(void* handle, const char* filename) {
-    if (!handle || !filename) {
-        g_lastError = "Invalid ts_load_data arguments";
-        return 0;
-    }
-    std::string error;
-    bool ok = asSystem(handle)->loadData(filename, error);
-    g_lastError = ok ? "" : error;
-    return ok ? 1 : 0;
+// --- наповнення бази даними: JSON читає Python (модуль json), сюди — готові сутності ---
+
+TRAVEL_API void ts_clear_data(void* handle) {
+    if (handle)
+        asSystem(handle)->clearData();
 }
 
-TRAVEL_API const char* ts_last_error() { return g_lastError.c_str(); }
+TRAVEL_API void ts_add_city(void* handle, int id, const char* name, const char* region,
+                            const char* description) {
+    if (!handle)
+        return;
+    asSystem(handle)->addCity(
+        City(id, name ? name : "", region ? region : "", description ? description : ""));
+}
+
+// Спільні поля об'єкта приходять окремими аргументами; tags — CSV-рядок (див. splitCsv).
+TRAVEL_API void ts_add_attraction(void* handle, int id, int cityId, const char* name, double cost,
+                                  double rating, double visitDuration, double openHour,
+                                  double closeHour, const char* tagsCsv, int isOutdoor,
+                                  const char* architecturalStyle, int isSeasonal) {
+    if (!handle)
+        return;
+    asSystem(handle)->addDestination(new Attraction(
+        id, cityId, name ? name : "", cost, rating, visitDuration, openHour, closeHour,
+        splitCsv(tagsCsv), isOutdoor != 0, architecturalStyle ? architecturalStyle : "",
+        isSeasonal != 0));
+}
+
+TRAVEL_API void ts_add_museum(void* handle, int id, int cityId, const char* name, double cost,
+                              double rating, double visitDuration, double openHour,
+                              double closeHour, const char* tagsCsv, int exhibitsCount,
+                              int hasAudioGuide, const char* expositionTheme) {
+    if (!handle)
+        return;
+    asSystem(handle)->addDestination(new Museum(
+        id, cityId, name ? name : "", cost, rating, visitDuration, openHour, closeHour,
+        splitCsv(tagsCsv), exhibitsCount, hasAudioGuide != 0,
+        expositionTheme ? expositionTheme : ""));
+}
+
+// Додає ребро графа без смуг і повертає його індекс (для наступних ts_add_lane).
+TRAVEL_API int ts_add_route(void* handle, int cityId, int fromId, int toId, double distanceKm) {
+    if (!handle)
+        return -1;
+    return static_cast<int>(asSystem(handle)->addRoute(Route(cityId, fromId, toId, distanceKm)));
+}
+
+// Додає смугу/лінію до ребра графа за індексом; усі числові поля — уже з дефолтами типу.
+TRAVEL_API void ts_add_lane(void* handle, int routeIndex, const char* type, const char* routeName,
+                            double speedMultiplier, double baseSpeedKmh, double cost,
+                            double waitTimeHours) {
+    if (!handle)
+        return;
+    LaneType laneType = LaneType::Sidewalk;
+    laneTypeFromString(type ? type : "sidewalk", laneType);
+    Lane lane(laneType, routeName ? routeName : "", speedMultiplier, baseSpeedKmh, cost,
+              waitTimeHours);
+    asSystem(handle)->addLane(static_cast<size_t>(routeIndex), lane);
+}
+
+// Дефолти смуги за її типом (щоб Python підставив відсутні поля з JSON).
+TRAVEL_API void ts_lane_defaults(const char* type, double* outSpeedMultiplier,
+                                 double* outBaseSpeedKmh, double* outCost,
+                                 double* outWaitTimeHours) {
+    LaneType laneType = LaneType::Sidewalk;
+    laneTypeFromString(type ? type : "sidewalk", laneType);
+    if (outSpeedMultiplier)
+        *outSpeedMultiplier = laneTypeDefaultSpeedMultiplier(laneType);
+    if (outBaseSpeedKmh)
+        *outBaseSpeedKmh = laneTypeDefaultBaseSpeed(laneType);
+    if (outCost)
+        *outCost = laneTypeDefaultCost(laneType);
+    if (outWaitTimeHours)
+        *outWaitTimeHours = laneTypeDefaultWaitHours(laneType);
+}
 
 TRAVEL_API int ts_cities_count(void* handle) {
     return handle ? static_cast<int>(asSystem(handle)->getCitiesCount()) : 0;

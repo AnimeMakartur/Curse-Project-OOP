@@ -1,6 +1,7 @@
 @echo off
 chcp 65001 >nul
 REM Запуск додатку TravelSystem (GUI на PyQt6 поверх C++ ядра travelcore.dll).
+REM Програма стартує з головної точки входу Code\Main.py.
 REM Використання:
 REM   run.bat                          — GUI з базою за замовчуванням (DataBase\travel_db.json)
 REM   run.bat <файл_бд.json>           — GUI з вказаною базою
@@ -54,5 +55,5 @@ if %errorlevel% neq 0 (
 )
 
 echo === Запуск TravelSystem ===
-python View\app.py %ARGS%
+python Main.py %ARGS%
 exit /b %errorlevel%

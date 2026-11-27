@@ -2,14 +2,18 @@
 
 Шар представлення (Python) викликає методи C++ ядра як прості транзакції
 через динамічну бібліотеку. Усі результати C++ повертає у вигляді JSON-рядків,
-які тут перетворюються на Python-об'єкти.
+які тут розбираються готовим парсером (json.loads). JSON-файл бази даних теж
+читається готовим парсером Python — стандартним модулем json
+(див. db_loader.loadDatabase); C++ ядро JSON не парсить.
 """
 
 import ctypes
 import json
 import os
 import sys
-from ctypes import c_char_p, c_double, c_int, c_void_p
+from ctypes import byref, c_char_p, c_double, c_int, c_void_p
+
+from db_loader import loadDatabase, normalizeLane
 
 # Можливі місця розташування зібраної бібліотеки (за пріоритетом)
 _CandidateNames = ("travelcore.dll", "libtravelcore.so", "libtravelcore.dylib")
@@ -74,10 +78,63 @@ class TravelClient:
         lib.ts_create.argtypes = []
         lib.ts_destroy.restype = None
         lib.ts_destroy.argtypes = [c_void_p]
-        lib.ts_load_data.restype = c_int
-        lib.ts_load_data.argtypes = [c_void_p, c_char_p]
-        lib.ts_last_error.restype = c_char_p
-        lib.ts_last_error.argtypes = []
+        lib.ts_clear_data.restype = None
+        lib.ts_clear_data.argtypes = [c_void_p]
+        lib.ts_add_city.restype = None
+        lib.ts_add_city.argtypes = [c_void_p, c_int, c_char_p, c_char_p, c_char_p]
+        lib.ts_add_attraction.restype = None
+        lib.ts_add_attraction.argtypes = [
+            c_void_p,
+            c_int,
+            c_int,
+            c_char_p,
+            c_double,
+            c_double,
+            c_double,
+            c_double,
+            c_double,
+            c_char_p,
+            c_int,
+            c_char_p,
+            c_int,
+        ]
+        lib.ts_add_museum.restype = None
+        lib.ts_add_museum.argtypes = [
+            c_void_p,
+            c_int,
+            c_int,
+            c_char_p,
+            c_double,
+            c_double,
+            c_double,
+            c_double,
+            c_double,
+            c_char_p,
+            c_int,
+            c_int,
+            c_char_p,
+        ]
+        lib.ts_add_route.restype = c_int
+        lib.ts_add_route.argtypes = [c_void_p, c_int, c_int, c_int, c_double]
+        lib.ts_add_lane.restype = None
+        lib.ts_add_lane.argtypes = [
+            c_void_p,
+            c_int,
+            c_char_p,
+            c_char_p,
+            c_double,
+            c_double,
+            c_double,
+            c_double,
+        ]
+        lib.ts_lane_defaults.restype = None
+        lib.ts_lane_defaults.argtypes = [
+            c_char_p,
+            ctypes.POINTER(c_double),
+            ctypes.POINTER(c_double),
+            ctypes.POINTER(c_double),
+            ctypes.POINTER(c_double),
+        ]
         lib.ts_cities_count.restype = c_int
         lib.ts_cities_count.argtypes = [c_void_p]
         lib.ts_get_cities.restype = c_void_p
@@ -133,16 +190,102 @@ class TravelClient:
 
     # --- публічні методи (відповідають use case діаграмі) ---
     def loadData(self, filename):
-        """Завантажити базу даних (міста + каталог + графи маршрутів) з JSON-файлу."""
-        ok = self._lib.ts_load_data(self._handle, filename.encode("utf-8")) == 1
-        if not ok:
-            err = self._lib.ts_last_error()
-            raise RuntimeError(
-                "Failed to load the database: %s (%s)"
-                % (filename, err.decode("utf-8") if err else "?")
+        """Завантажити базу даних (міста + каталог + графи маршрутів) з JSON-файлу.
+
+        JSON-файл читає готовий парсер Python (стандартний модуль json у
+        db_loader); у C++ ядро сутності передаються через ts_add_* — C++ JSON
+        не парсить.
+        """
+        try:
+            data = loadDatabase(filename)
+        except FileNotFoundError:
+            raise RuntimeError(f"Failed to open database file: {filename}") from None
+        except json.JSONDecodeError as e:
+            raise RuntimeError(f"JSON parse error in {filename}: {e}") from None
+        except ValueError as e:
+            raise RuntimeError(str(e)) from None
+
+        lib = self._lib
+        h = self._handle
+        lib.ts_clear_data(h)
+        for c in data["cities"]:
+            lib.ts_add_city(
+                h,
+                int(c.get("id", 0)),
+                str(c.get("name", "")).encode("utf-8"),
+                str(c.get("region", "")).encode("utf-8"),
+                str(c.get("description", "")).encode("utf-8"),
             )
+        for d in data["destinations"]:
+            tagsCsv = ",".join(str(t) for t in d.get("tags", [])).encode("utf-8")
+            common = (
+                h,
+                int(d.get("id", 0)),
+                int(d.get("cityId", 0)),
+                str(d.get("name", "")).encode("utf-8"),
+                float(d.get("cost", 0.0)),
+                float(d.get("rating", 0.0)),
+                float(d.get("visitDuration", 0.0)),
+                float(d.get("openHour", 9.0)),
+                float(d.get("closeHour", 18.0)),
+                tagsCsv,
+            )
+            if d.get("type") == "museum":
+                lib.ts_add_museum(
+                    *common,
+                    int(d.get("exhibitsCount", 0)),
+                    1 if d.get("hasAudioGuide") else 0,
+                    str(d.get("expositionTheme", "")).encode("utf-8"),
+                )
+            else:  # attraction / hotel — як пам'ятка
+                lib.ts_add_attraction(
+                    *common,
+                    1 if d.get("isOutdoor") else 0,
+                    str(d.get("architecturalStyle", "")).encode("utf-8"),
+                    1 if d.get("isSeasonal") else 0,
+                )
+        for r in data["routes"]:
+            routeIndex = lib.ts_add_route(
+                h,
+                int(r.get("cityId", 0)),
+                int(r.get("fromId", 0)),
+                int(r.get("toId", 0)),
+                float(r.get("distanceKm", 0.0)),
+            )
+            for lane in r.get("lanes", []):
+                self._addLane(routeIndex, lane)
         self._namesById = {d["id"]: d.get("name", "") for d in self.getCatalog(-1)}
         return True
+
+    def _laneDefaults(self, laneType):
+        """Дефолти смуги за її типом від C++ ядра.
+
+        Повертає (speedMultiplier, baseSpeedKmh, cost, waitTimeHours).
+        """
+        mult, speed, cost, wait = c_double(), c_double(), c_double(), c_double()
+        self._lib.ts_lane_defaults(
+            laneType.encode("utf-8"), byref(mult), byref(speed), byref(cost), byref(wait)
+        )
+        return mult.value, speed.value, cost.value, wait.value
+
+    def _addLane(self, routeIndex, lane):
+        """Додати одну смугу/лінію до ребра графа.
+
+        ``lane`` — рядок ("sidewalk") або dict із підмножиною полів; відсутні
+        числові поля добираються з дефолтів типу смуги (ts_lane_defaults).
+        """
+        laneType = lane if isinstance(lane, str) else str(lane.get("type", "sidewalk"))
+        lane = normalizeLane(lane, self._laneDefaults(laneType))
+        self._lib.ts_add_lane(
+            self._handle,
+            int(routeIndex),
+            lane["type"].encode("utf-8"),
+            lane["routeName"].encode("utf-8"),
+            lane["speedMultiplier"],
+            lane["baseSpeedKmh"],
+            lane["cost"],
+            lane["waitTimeHours"],
+        )
 
     def destinationName(self, destId):
         """Назва об'єкта за id вершини графа (fallback — 'id=N', якщо об'єкта немає в каталозі)."""
@@ -163,8 +306,9 @@ class TravelClient:
     def citiesCount(self):
         return self._lib.ts_cities_count(self._handle)
 
-    def setTourist(self, name, budget, isTotalBudget, days, dailyTimeLimit, interests, cityId=-1,
-                   hasCar=False):
+    def setTourist(
+        self, name, budget, isTotalBudget, days, dailyTimeLimit, interests, cityId=-1, hasCar=False
+    ):
         """Створити/редагувати профіль туриста (UC1, UC4, UC5) із обраним містом cityId.
 
         hasCar — чи є в туриста власна машина: тоді car_lane доступна в Дейкстрі,
