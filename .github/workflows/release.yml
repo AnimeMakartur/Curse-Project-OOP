@@ -37,7 +37,7 @@ jobs:
       # 3. Збираємо .exe у папку (onedir, без консолі) з головної точки входу Code\Main.py.
       #    --paths Code\View — щоб PyInstaller знайшов модулі представлення
       #    (app.py, main_window.py, travel_client.py, db_loader.py) і запакував їх.
-      - name: Package app with PyInstaller (entry: Code\Main.py)
+      - name: "Package app with PyInstaller (entry: Code\\Main.py)"
         run: |
           pyinstaller --noconfirm --clean --onedir --windowed `
             --paths Code\View `
