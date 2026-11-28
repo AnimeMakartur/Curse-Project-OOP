@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Збірка ядра C++ у shared-бібліотеку Controllers/libtravelcore.so
-# Потрібен g++ або clang++ (C++17). Прапорець --tests додатково збирає smoke-тест.
+# Потрібен g++ або clang++ (C++17).
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -28,7 +28,7 @@ if [[ "${1:-}" == "--tests" ]]; then
     "$CXX" -std=c++17 -O2 -Wall -Wextra \
         -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH \
         -I Models/Include -I Controllers/Include \
-        Tests/smoke_test.cpp "${SOURCES[@]}" \
-        -o Tests/.build/smoke_test
-    echo "Готово: Tests/.build/smoke_test (запуск: Tests/.build/smoke_test)"
+        Tests/core_test.cpp "${SOURCES[@]}" \
+        -o Tests/.build/core_test
+    echo "Готово: Tests/.build/core_test (запуск: Tests/.build/core_test)"
 fi

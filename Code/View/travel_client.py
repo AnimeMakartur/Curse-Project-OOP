@@ -5,15 +5,19 @@
 які тут розбираються готовим парсером (json.loads). JSON-файл бази даних теж
 читається готовим парсером Python — стандартним модулем json
 (див. db_loader.loadDatabase); C++ ядро JSON не парсить.
+
+Тип смуги (LaneType) передається у C++ як int; рядкові ключі, українські назви
+та дефолтні параметри смуг — у модулі lane_types.
 """
 
 import ctypes
 import json
 import os
 import sys
-from ctypes import byref, c_char_p, c_double, c_int, c_void_p
+from ctypes import c_char_p, c_double, c_int, c_void_p
 
 from db_loader import loadDatabase, normalizeLane
+from lane_types import enrich_lane, lane_defaults, lane_type_to_int
 
 # Можливі місця розташування зібраної бібліотеки (за пріоритетом)
 _CandidateNames = ("travelcore.dll", "libtravelcore.so", "libtravelcore.dylib")
@@ -54,6 +58,57 @@ def findLibrary(explicitPath=None):
         "Build it first: Code\\build.bat or Code/build.sh. "
         "Or set the path via the TRAVELCORE_LIB environment variable."
     )
+
+
+def _enrichLanes(obj):
+    """Рекурсивно збагатити всі lane-об'єкти в структурі рядковими/укр. полями."""
+    if isinstance(obj, dict):
+        if "type" in obj and isinstance(obj.get("type"), int) and "routeName" in obj:
+            enrich_lane(obj)
+        for v in obj.values():
+            _enrichLanes(v)
+    elif isinstance(obj, list):
+        for item in obj:
+            _enrichLanes(item)
+    return obj
+
+
+def _fmtPlanSummary(plan):
+    """Текстовий підсумок плану (колишній TravelPlan::exportPlanSummary у C++)."""
+    lines = [
+        f"=== Personalized travel plan for {plan.get('tourist', '')} "
+        f"(city id={plan.get('targetCityId', -1)}) ===",
+        f"Total: cost {plan.get('totalCost', 0):g} EUR "
+        f"(remaining budget {plan.get('remainingBudget', 0):g} EUR), "
+        f"time on site {plan.get('totalVisitTime', 0):g} h, "
+        f"travel time {plan.get('totalTravelTime', 0):g} h, "
+        f"total {plan.get('totalDuration', 0):g} h.",
+        "",
+    ]
+    for day in plan.get("days", []):
+        lines.append(f"Day {day['day']}:")
+        items = day.get("items", [])
+        if not items:
+            lines.append("  (free day)")
+            lines.append("")
+            continue
+        for i, item in enumerate(items):
+            for t in item.get("transfers", []):
+                lane = t.get("lane", {})
+                desc = lane.get("description", lane.get("type", ""))
+                lines.append(
+                    f"  -> transfer {t.get('fromName', t['fromId'])} -> "
+                    f"{t.get('toName', t['toId'])}: {t['distanceKm']:g} km, "
+                    f"{t['timeHours']:g} h, {t['cost']:g} EUR — {desc}"
+                )
+            dest = item.get("destination")
+            if dest:
+                lines.append(
+                    f"  {i + 1}. {dest['name']} ({dest['type']}, {dest['cost']:g} EUR, "
+                    f"{dest['visitDuration']:g} h, rating {dest['rating']:g})"
+                )
+        lines.append("")
+    return "\n".join(lines)
 
 
 class TravelClient:
@@ -116,24 +171,17 @@ class TravelClient:
         ]
         lib.ts_add_route.restype = c_int
         lib.ts_add_route.argtypes = [c_void_p, c_int, c_int, c_int, c_double]
+        # laneType — int (enum LaneType), а не рядок
         lib.ts_add_lane.restype = None
         lib.ts_add_lane.argtypes = [
             c_void_p,
             c_int,
+            c_int,
             c_char_p,
-            c_char_p,
             c_double,
             c_double,
             c_double,
             c_double,
-        ]
-        lib.ts_lane_defaults.restype = None
-        lib.ts_lane_defaults.argtypes = [
-            c_char_p,
-            ctypes.POINTER(c_double),
-            ctypes.POINTER(c_double),
-            ctypes.POINTER(c_double),
-            ctypes.POINTER(c_double),
         ]
         lib.ts_cities_count.restype = c_int
         lib.ts_cities_count.argtypes = [c_void_p]
@@ -257,29 +305,20 @@ class TravelClient:
         self._namesById = {d["id"]: d.get("name", "") for d in self.getCatalog(-1)}
         return True
 
-    def _laneDefaults(self, laneType):
-        """Дефолти смуги за її типом від C++ ядра.
-
-        Повертає (speedMultiplier, baseSpeedKmh, cost, waitTimeHours).
-        """
-        mult, speed, cost, wait = c_double(), c_double(), c_double(), c_double()
-        self._lib.ts_lane_defaults(
-            laneType.encode("utf-8"), byref(mult), byref(speed), byref(cost), byref(wait)
-        )
-        return mult.value, speed.value, cost.value, wait.value
-
     def _addLane(self, routeIndex, lane):
         """Додати одну смугу/лінію до ребра графа.
 
         ``lane`` — рядок ("sidewalk") або dict із підмножиною полів; відсутні
-        числові поля добираються з дефолтів типу смуги (ts_lane_defaults).
+        числові поля добираються з дефолтів типу смуги на боці Python
+        (lane_types.lane_defaults).
         """
         laneType = lane if isinstance(lane, str) else str(lane.get("type", "sidewalk"))
-        lane = normalizeLane(lane, self._laneDefaults(laneType))
+        base, mult, cost, wait = lane_defaults(laneType)
+        lane = normalizeLane(lane, (mult, base, cost, wait))
         self._lib.ts_add_lane(
             self._handle,
             int(routeIndex),
-            lane["type"].encode("utf-8"),
+            lane_type_to_int(lane["type"]),
             lane["routeName"].encode("utf-8"),
             lane["speedMultiplier"],
             lane["baseSpeedKmh"],
@@ -346,8 +385,9 @@ class TravelClient:
         return self._takeJson(self._lib.ts_catalog(self._handle, int(cityId))) or []
 
     def getRoutes(self, cityId=-1):
-        """Ребра транспортного графа міста зі списком смуг/ліній."""
-        return self._takeJson(self._lib.ts_get_routes(self._handle, int(cityId))) or []
+        """Ребра транспортного графа міста зі списком смуг/ліній (lane збагачені рядковими полями)."""
+        routes = self._takeJson(self._lib.ts_get_routes(self._handle, int(cityId))) or []
+        return _enrichLanes(routes)
 
     def filterDestinations(self):
         """Лінійний пошук/фільтрація каталогу обраного міста (UC6)."""
@@ -360,7 +400,8 @@ class TravelClient:
     def findShortestPath(self, fromId, toId, budget=None):
         """Оптимальний маршрут алгоритмом Дейкстри (UC8) з деталізацією ліній транспорту.
 
-        Кожен крок додатково містить fromName/toName — назви об'єктів замість ID вершин.
+        Кожен крок додатково містить fromName/toName — назви об'єктів замість ID вершин,
+        а lane збагачений рядковими/українськими полями (type, typeUkr, transportUkr, description).
         """
         if budget is None:
             steps = (
@@ -378,18 +419,22 @@ class TravelClient:
                 )
                 or []
             )
+        _enrichLanes(steps)
         return self._enrichPath(steps)
 
     def generatePlan(self):
         """Згенерувати персоналізований туристичний план (UC2).
 
-        Трансфери всередині плану збагачені назвами об'єктів (fromName/toName).
+        Трансфери всередині плану збагачені назвами об'єктів (fromName/toName)
+        та рядковими полями смуг; текстовий summary формується тут, у Python.
         """
         plan = self._takeJson(self._lib.ts_generate_plan(self._handle))
         if plan:
+            _enrichLanes(plan)
             for day in plan.get("days", []):
                 for item in day.get("items", []):
                     self._enrichPath(item.get("transfers", []))
+            plan["summary"] = _fmtPlanSummary(plan)
         return plan
 
     def close(self):

@@ -3,10 +3,8 @@
 // Усі результати повертаються у вигляді JSON-рядків (UTF-8), які Python розбирає
 // готовим парсером (стандартний модуль json).
 //
-// JSON-файл бази даних (travel_db.json) C++ НЕ парсить: його читає Python-сторона
-// стандартним json.load, а сюди дані потрапляють уже розібраними через
-// ts_clear_data / ts_add_city / ts_add_attraction / ts_add_museum / ts_add_route /
-// ts_add_lane / ts_lane_defaults.
+// Тип смуги передається як int (enum LaneType), рядкові ключі/укр. назви/дефолти —
+// на боці Python (View/lane_types.py). JSON-файл бази C++ НЕ парсить: його читає Python.
 
 #include <cstdio>
 #include <cstring>
@@ -34,6 +32,7 @@ using namespace travel;
 namespace {
 
 std::string escapeJson(const std::string& s) {
+
     std::string out;
     out.reserve(s.size() + 2);
     for (char c : s) {
@@ -70,12 +69,14 @@ std::string q(const std::string& s) { return "\"" + escapeJson(s) + "\""; }
 
 // Компактне представлення числа у JSON (%.10g, C-локаль → крапка).
 std::string num(double v) {
+
     char buf[32];
     std::snprintf(buf, sizeof(buf), "%.10g", v);
     return buf;
 }
 
 std::string tagsToJson(const std::vector<std::string>& tags) {
+
     std::string out = "[";
     for (size_t i = 0; i < tags.size(); ++i) {
         if (i)
@@ -86,22 +87,23 @@ std::string tagsToJson(const std::vector<std::string>& tags) {
     return out;
 }
 
+// Тип смуги у JSON — int (enum LaneType); рядкові/укр. представлення додає Python.
 std::string laneToJson(const Lane& lane) {
+
     std::ostringstream out;
     out << "{"
-        << "\"type\":" << q(laneTypeToString(lane.type))
-        << ",\"typeUkr\":" << q(laneTypeToUkr(lane.type))
-        << ",\"transportUkr\":" << q(laneTypeTransportUkr(lane.type))
+        << "\"type\":" << static_cast<int>(lane.type)
         << ",\"routeName\":" << q(lane.routeName)
         << ",\"speedMultiplier\":" << num(lane.speedMultiplier)
         << ",\"baseSpeedKmh\":" << num(lane.baseSpeedKmh)
         << ",\"effectiveSpeedKmh\":" << num(lane.effectiveSpeedKmh())
         << ",\"cost\":" << num(lane.cost) << ",\"waitTimeHours\":" << num(lane.waitTimeHours)
-        << ",\"description\":" << q(lane.describe()) << "}";
+        << "}";
     return out.str();
 }
 
 std::string lanesToJson(const Route& route) {
+
     std::string out = "[";
     const auto& lanes = route.getLanes();
     for (size_t i = 0; i < lanes.size(); ++i) {
@@ -114,6 +116,7 @@ std::string lanesToJson(const Route& route) {
 }
 
 std::string routeToJson(const Route& r) {
+
     std::ostringstream out;
     out << "{"
         << "\"cityId\":" << r.getCityId() << ",\"fromId\":" << r.getFromId()
@@ -123,6 +126,7 @@ std::string routeToJson(const Route& r) {
 }
 
 std::string pathStepToJson(const PathStep& s) {
+
     std::ostringstream out;
     out << "{"
         << "\"cityId\":" << s.route.getCityId() << ",\"fromId\":" << s.route.getFromId()
@@ -133,6 +137,7 @@ std::string pathStepToJson(const PathStep& s) {
 }
 
 std::string cityToJson(const City& c) {
+
     std::ostringstream out;
     out << "{"
         << "\"id\":" << c.getId() << ",\"name\":" << q(c.getName())
@@ -142,6 +147,7 @@ std::string cityToJson(const City& c) {
 }
 
 std::string destinationToJson(const TouristDestination* d) {
+
     std::ostringstream out;
     out << "{"
         << "\"id\":" << d->getId() << ",\"cityId\":" << d->getCityId()
@@ -155,6 +161,7 @@ std::string destinationToJson(const TouristDestination* d) {
 }
 
 std::string destinationsToJson(const std::vector<TouristDestination*>& list) {
+
     std::string out = "[";
     for (size_t i = 0; i < list.size(); ++i) {
         if (i)
@@ -166,6 +173,7 @@ std::string destinationsToJson(const std::vector<TouristDestination*>& list) {
 }
 
 std::string pathToJson(const std::vector<PathStep>& path) {
+
     std::string out = "[";
     for (size_t i = 0; i < path.size(); ++i) {
         if (i)
@@ -177,6 +185,7 @@ std::string pathToJson(const std::vector<PathStep>& path) {
 }
 
 std::vector<std::string> splitCsv(const std::string& text) {
+
     std::vector<std::string> result;
     std::string current;
     std::istringstream stream(text);
@@ -191,6 +200,7 @@ std::vector<std::string> splitCsv(const std::string& text) {
 }
 
 char* toCString(const std::string& s) {
+
     char* buffer = new char[s.size() + 1];
     std::memcpy(buffer, s.c_str(), s.size() + 1);
     return buffer;
@@ -207,12 +217,14 @@ TRAVEL_API void ts_destroy(void* handle) { delete asSystem(handle); }
 // --- наповнення бази даними: JSON читає Python (модуль json), сюди — готові сутності ---
 
 TRAVEL_API void ts_clear_data(void* handle) {
+
     if (handle)
         asSystem(handle)->clearData();
 }
 
 TRAVEL_API void ts_add_city(void* handle, int id, const char* name, const char* region,
                             const char* description) {
+
     if (!handle)
         return;
     asSystem(handle)->addCity(
@@ -224,6 +236,7 @@ TRAVEL_API void ts_add_attraction(void* handle, int id, int cityId, const char* 
                                   double rating, double visitDuration, double openHour,
                                   double closeHour, const char* tagsCsv, int isOutdoor,
                                   const char* architecturalStyle, int isSeasonal) {
+
     if (!handle)
         return;
     asSystem(handle)->addDestination(new Attraction(
@@ -236,6 +249,7 @@ TRAVEL_API void ts_add_museum(void* handle, int id, int cityId, const char* name
                               double rating, double visitDuration, double openHour,
                               double closeHour, const char* tagsCsv, int exhibitsCount,
                               int hasAudioGuide, const char* expositionTheme) {
+
     if (!handle)
         return;
     asSystem(handle)->addDestination(new Museum(
@@ -246,45 +260,34 @@ TRAVEL_API void ts_add_museum(void* handle, int id, int cityId, const char* name
 
 // Додає ребро графа без смуг і повертає його індекс (для наступних ts_add_lane).
 TRAVEL_API int ts_add_route(void* handle, int cityId, int fromId, int toId, double distanceKm) {
+
     if (!handle)
         return -1;
     return static_cast<int>(asSystem(handle)->addRoute(Route(cityId, fromId, toId, distanceKm)));
 }
 
-// Додає смугу/лінію до ребра графа за індексом; усі числові поля — уже з дефолтами типу.
-TRAVEL_API void ts_add_lane(void* handle, int routeIndex, const char* type, const char* routeName,
+// Додає смугу/лінію до ребра графа за індексом; type — int (enum LaneType), усі числові поля
+// — уже з дефолтами, добраними на боці Python (див. lane_types.py).
+TRAVEL_API void ts_add_lane(void* handle, int routeIndex, int laneType, const char* routeName,
                             double speedMultiplier, double baseSpeedKmh, double cost,
                             double waitTimeHours) {
+    if (laneType < 0 || laneType >= static_cast<int>(LaneType::COUNT))
+        return;
     if (!handle)
         return;
-    LaneType laneType = LaneType::Sidewalk;
-    laneTypeFromString(type ? type : "sidewalk", laneType);
-    Lane lane(laneType, routeName ? routeName : "", speedMultiplier, baseSpeedKmh, cost,
+    LaneType type = static_cast<LaneType>(laneType);
+    Lane lane(type, routeName ? routeName : "", speedMultiplier, baseSpeedKmh, cost,
               waitTimeHours);
     asSystem(handle)->addLane(static_cast<size_t>(routeIndex), lane);
 }
 
-// Дефолти смуги за її типом (щоб Python підставив відсутні поля з JSON).
-TRAVEL_API void ts_lane_defaults(const char* type, double* outSpeedMultiplier,
-                                 double* outBaseSpeedKmh, double* outCost,
-                                 double* outWaitTimeHours) {
-    LaneType laneType = LaneType::Sidewalk;
-    laneTypeFromString(type ? type : "sidewalk", laneType);
-    if (outSpeedMultiplier)
-        *outSpeedMultiplier = laneTypeDefaultSpeedMultiplier(laneType);
-    if (outBaseSpeedKmh)
-        *outBaseSpeedKmh = laneTypeDefaultBaseSpeed(laneType);
-    if (outCost)
-        *outCost = laneTypeDefaultCost(laneType);
-    if (outWaitTimeHours)
-        *outWaitTimeHours = laneTypeDefaultWaitHours(laneType);
-}
-
 TRAVEL_API int ts_cities_count(void* handle) {
+
     return handle ? static_cast<int>(asSystem(handle)->getCitiesCount()) : 0;
 }
 
 TRAVEL_API char* ts_get_cities(void* handle) {
+
     if (!handle)
         return toCString("[]");
     const std::vector<City>& cities = asSystem(handle)->getCities();
@@ -301,6 +304,7 @@ TRAVEL_API char* ts_get_cities(void* handle) {
 TRAVEL_API void ts_set_tourist(void* handle, int id, const char* name, double budget,
                                int isTotalBudget, int days, double dailyTimeLimit,
                                const char* interestsCsv, int targetCityId, int hasCar) {
+
     if (!handle)
         return;
     std::vector<std::string> tags =
@@ -311,6 +315,7 @@ TRAVEL_API void ts_set_tourist(void* handle, int id, const char* name, double bu
 }
 
 TRAVEL_API void ts_set_target_city(void* handle, int cityId) {
+
     if (!handle || !asSystem(handle)->hasProfile())
         return;
     Tourist t = asSystem(handle)->getTourist();
@@ -319,6 +324,7 @@ TRAVEL_API void ts_set_target_city(void* handle, int cityId) {
 }
 
 TRAVEL_API char* ts_get_profile(void* handle) {
+
     if (!handle)
         return toCString("{}");
     const Tourist& t = asSystem(handle)->getTourist();
@@ -338,27 +344,32 @@ TRAVEL_API char* ts_get_profile(void* handle) {
 }
 
 TRAVEL_API int ts_catalog_size(void* handle) {
+
     return handle ? static_cast<int>(asSystem(handle)->getCatalogSize()) : 0;
 }
 
 TRAVEL_API int ts_routes_count(void* handle) {
+
     return handle ? static_cast<int>(asSystem(handle)->getRoutesCount()) : 0;
 }
 
 // Повний каталог об'єктів міста (cityId < 0 — усі міста); для GUI-таблиці каталогу.
 TRAVEL_API char* ts_catalog(void* handle, int cityId) {
+
     if (!handle)
         return toCString("[]");
     return toCString(destinationsToJson(asSystem(handle)->getCatalog(cityId)));
 }
 
 TRAVEL_API char* ts_filter_destinations(void* handle) {
+
     if (!handle)
         return toCString("[]");
     return toCString(destinationsToJson(asSystem(handle)->filterDestinations()));
 }
 
 TRAVEL_API char* ts_sorted_destinations(void* handle) {
+
     if (!handle)
         return toCString("[]");
     TravelSystem* sys = asSystem(handle);
@@ -369,6 +380,7 @@ TRAVEL_API char* ts_sorted_destinations(void* handle) {
 
 // усі ребра графа міста (cityId < 0 — усі міста) зі списком смуг/ліній
 TRAVEL_API char* ts_get_routes(void* handle, int cityId) {
+
     if (!handle)
         return toCString("[]");
     const std::vector<Route> routes = asSystem(handle)->getRoutes(cityId);
@@ -383,6 +395,7 @@ TRAVEL_API char* ts_get_routes(void* handle, int cityId) {
 }
 
 TRAVEL_API char* ts_find_shortest_path(void* handle, int fromId, int toId) {
+
     if (!handle)
         return toCString("[]");
     return toCString(pathToJson(asSystem(handle)->findShortestPath(fromId, toId)));
@@ -390,6 +403,7 @@ TRAVEL_API char* ts_find_shortest_path(void* handle, int fromId, int toId) {
 
 // Дейкстра із явним залишком бюджету (визначає, які лінії транспорту доступні).
 TRAVEL_API char* ts_find_shortest_path_budget(void* handle, int fromId, int toId, double budget) {
+
     if (!handle)
         return toCString("[]");
     TravelSystem* sys = asSystem(handle);
@@ -397,6 +411,7 @@ TRAVEL_API char* ts_find_shortest_path_budget(void* handle, int fromId, int toId
 }
 
 TRAVEL_API char* ts_generate_plan(void* handle) {
+
     if (!handle)
         return toCString("{}");
     TravelPlan plan = asSystem(handle)->generatePersonalizedPlan();
@@ -432,7 +447,6 @@ TRAVEL_API char* ts_generate_plan(void* handle) {
     out << ",\"totalTravelTime\":" << num(plan.getTotalTravelTime());
     out << ",\"totalVisitTime\":" << num(plan.getTotalVisitTime());
     out << ",\"remainingBudget\":" << num(plan.getRemainingBudget());
-    out << ",\"summary\":" << q(plan.exportPlanSummary());
     out << "}";
     return toCString(out.str());
 }

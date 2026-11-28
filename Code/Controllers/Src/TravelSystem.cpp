@@ -72,7 +72,7 @@ std::vector<PathStep> TravelSystem::collapseCarPath(const std::vector<PathStep>&
     double totalKm = 0.0;
     for (const PathStep& s : path)
         totalKm += s.route.getDistance();
-    Lane car(LaneType::CarLane, "Direct drive");
+    Lane car(LaneType::CarLane, "Direct drive", 1.0, 30.0, 0.0, 0.0);
     Route direct(cityId, startId, endId, totalKm, {car});
     std::vector<PathStep> out;
     out.push_back(PathStep(direct, car));

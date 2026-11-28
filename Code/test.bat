@@ -1,9 +1,8 @@
 @echo off
 chcp 65001 >nul
-REM Запуск smoke-тестів ядра C++ (Tests\.build\smoke_test.exe).
-REM Тест не читає JSON-файл бази (C++ ядро не парсить JSON): демо-дані задані
-REM у коді тесту, а JSON-бази (Tests\sample_db.json, DataBase\travel_db.json)
-REM перевіряються Python-режимом: python Main.py --console Tests\sample_db.json
+REM Запуск тестів: C++ юніт-тест ядра (Tests\.build\core_test.exe) + Python smoke-тест.
+REM Python smoke-тест йде через C++ ядро (ctypes): база Tests\sample_db.json парситься
+REM стандартним модулем json у Python, а C++ отримує готові сутності через C API.
 REM Використання:
 REM   test.bat                  — запуск тестів
 REM   test.bat --build          — спочатку перезібрати (build.bat --tests), потім тести
@@ -29,20 +28,37 @@ if %NEED_BUILD%==1 (
         exit /b 1
     )
 ) else (
-    if not exist Tests\.build\smoke_test.exe (
-        echo Не знайдено Tests\.build\smoke_test.exe — збираю автоматично...
-        call build.bat --tests
-        if %errorlevel% neq 0 (
-            echo Помилка збірки.
-            exit /b 1
+    if not exist Controllers\travelcore.dll (
+        if not exist Controllers\libtravelcore.so (
+            if not exist Tests\.build\core_test.exe (
+                echo Не знайдено зібране ядро — збираю автоматично...
+                call build.bat --tests
+                if %errorlevel% neq 0 (
+                    echo Помилка збірки.
+                    exit /b 1
+                )
+            )
         )
     )
 )
 
-echo === Запуск smoke-тесту ===
+set "RC=0"
+
+echo === C++ юніт-тести ядра ===
 echo.
-Tests\.build\smoke_test.exe
-set "RC=%errorlevel%"
+if exist Tests\.build\core_test.exe (
+    Tests\.build\core_test.exe
+    set "RC=%errorlevel%"
+) else (
+    echo (core_test.exe не знайдено — пропускаємо)
+)
+
+echo.
+echo === Python smoke-тест (ctypes -> C++ ядро) ===
+echo.
+python Tests\smoke_test.py Tests\sample_db.json
+if %errorlevel% neq 0 set "RC=%errorlevel%"
+
 echo.
 if %RC%==0 (
     echo Тести пройдено успішно (код %RC%).

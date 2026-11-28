@@ -37,7 +37,6 @@ class TravelPlan {
     void addDayStep(int day, const TouristDestination& dest); // без переходу (старт дня)
 
     void calculateTotalMetrics();
-    std::string exportPlanSummary() const;
 
     const Tourist& getTourist() const;
     double getTotalCost() const;

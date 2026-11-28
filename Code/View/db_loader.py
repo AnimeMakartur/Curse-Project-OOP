@@ -40,8 +40,7 @@ def normalizeLane(lane, defaults):
     ``lane`` — або рядок ("sidewalk"), або об'єкт із підмножиною полів
     ``type/routeName/speedMultiplier/baseSpeedKmh/cost/waitTimeHours``.
     ``defaults`` — кортеж (speedMultiplier, baseSpeedKmh, cost, waitTimeHours)
-    дефолтів типу смуги від C++ ядра (ts_lane_defaults); відсутні поля
-    беруться з нього.
+    дефолтів типу смуги з Python-довідника lane_types; відсутні поля беруться з нього.
     """
     if isinstance(lane, str):
         lane = {"type": lane}
