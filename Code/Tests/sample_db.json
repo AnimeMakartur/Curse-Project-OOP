@@ -224,7 +224,7 @@
       "fromId": 5,
       "toId": 1,
       "distanceKm": 0.6,
-      "lanes": [{ "type": "sidewalk" }, { "type": "bike_lane" }]
+      "Оптиlanes": [{ "type": "sidewalk" }, { "type": "bike_lane" }]
     },
     {
       "cityId": 2,
