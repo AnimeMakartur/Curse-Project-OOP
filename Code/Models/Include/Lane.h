@@ -14,7 +14,8 @@ enum class LaneType {
     Metrobus = 4,    // metrobus
     TramLine = 5,    // tram_line
     SuburbanRail = 6, // suburban_rail
-    Railway = 7      // railway
+    Railway = 7,     // railway
+    COUNT = 8        // кількість типів (для валідації int з C API)
 };
 
 // Одна смуга/лінія дороги: тип, назва маршруту, швидкісні параметри, вартість, очікування.
